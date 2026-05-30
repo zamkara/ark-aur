@@ -1,6 +1,6 @@
 pkgname=ark-system-tweaks
 pkgver=1.0.0
-pkgrel=1
+pkgrel=2
 pkgdesc="System configuration and tweaks for Ark Linux"
 arch=('any')
 license=('MIT')
@@ -10,9 +10,22 @@ package() {
   install -Dm644 /dev/null "$pkgdir/etc/ostree/prepare-root.conf"
   echo '[sysroot]' > "$pkgdir/etc/ostree/prepare-root.conf"
 
-  # 2. Plymouth BGRT theme config
-  install -Dm644 /dev/null "$pkgdir/etc/plymouth/plymouthd.conf"
-  echo -e "[Daemon]\nTheme=bgrt" > "$pkgdir/etc/plymouth/plymouthd.conf"
+  # 2. System tweaks hook (for plymouth and os-release)
+  install -Dm644 /dev/null "$pkgdir/usr/share/libalpm/hooks/99-ark-system-tweaks.hook"
+  cat <<EOF > "$pkgdir/usr/share/libalpm/hooks/99-ark-system-tweaks.hook"
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = filesystem
+Target = plymouth
+Target = ark-system-tweaks
+
+[Action]
+Description = Applying Ark Linux system tweaks...
+When = PostTransaction
+Exec = /usr/bin/bash -c "sed -i 's/Theme=spinner/Theme=bgrt/' /etc/plymouth/plymouthd.conf 2>/dev/null || true; sed -i 's/VERSION_ID=.*/VERSION_ID=\"rolling\"/' /usr/lib/os-release 2>/dev/null || true"
+EOF
 
   # 3. Emergency service override
   install -Dm644 /dev/null "$pkgdir/etc/systemd/system/emergency.service.d/override.conf"
@@ -66,17 +79,23 @@ if [[ $- == *i* ]] && [ -z "$CONTAINER_ID" ]; then
 fi
 EOF
 
-  # 8. OS-release patch
-  install -Dm644 /dev/null "$pkgdir/usr/lib/os-release"
-  echo 'VERSION_ID="rolling"' > "$pkgdir/usr/lib/os-release"
-
-  # 9. Gschema override for MoreWaita
   install -Dm644 /dev/null "$pkgdir/usr/share/glib-2.0/schemas/99-ark-theme.gschema.override"
-  echo -e "[org.gnome.desktop.interface]\nicon-theme='MoreWaita'" > "$pkgdir/usr/share/glib-2.0/schemas/99-ark-theme.gschema.override"
+  cat <<'EOF' > "$pkgdir/usr/share/glib-2.0/schemas/99-ark-theme.gschema.override"
+[org.gnome.desktop.interface]
+icon-theme='MoreWaita'
 
+[org.gnome.desktop.app-folders]
+folder-children=['System', 'Utilities', 'YaST', 'Pardus', 'Containers']
+
+[org.gnome.desktop.app-folders.folder:/org/gnome/desktop/app-folders/folders/Containers/]
+name='Containers'
+translate=true
+categories=['Distrobox']
+
+[org.gnome.desktop.app-folders.folder:/org/gnome/desktop/app-folders/folders/System/]
+apps=['nm-connection-editor.desktop', 'org.gnome.baobab.desktop', 'org.gnome.DiskUtility.desktop', 'org.gnome.Logs.desktop', 'org.freedesktop.MalcontentControl.desktop', 'org.gnome.SystemMonitor.desktop', 'org.gnome.tweaks.desktop', 'bvnc.desktop', 'bssh.desktop', 'qvidcap.desktop', 'qv4l2.desktop', 'tuned-gui.desktop', 'rmpc.desktop', 'com-maxrave-simpmusic-MainKt.desktop', 'xarchiver.desktop', 'org.gnome.Settings.desktop', 'com.zamkara.alga.desktop']
+EOF
   # 10. bootupd symlinks
-  install -d "$pkgdir/usr/sbin"
   install -d "$pkgdir/usr/bin"
-  ln -s /usr/libexec/bootupd "$pkgdir/usr/sbin/bootupd"
   ln -s /usr/libexec/bootupd "$pkgdir/usr/bin/bootupd"
 }
