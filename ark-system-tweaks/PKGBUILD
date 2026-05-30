@@ -35,7 +35,7 @@ Target = usr/share/applications/*.desktop
 Description = Exporting applications to host...
 When = PostTransaction
 NeedsTargets
-Exec = /usr/bin/bash -c 'while read -r f; do distrobox-export --app "\$(basename "\$f" .desktop)" --export-label "none" 2>/dev/null || true; done'
+Exec = /usr/bin/bash -c 'USER_NAME=\$(id -un 1000 2>/dev/null || echo root); while read -r f; do sudo -u "\$USER_NAME" distrobox-export --app "\$(basename "\$f" .desktop)" --export-label "none" 2>/dev/null || true; done'
 EOF
 
   install -Dm644 /dev/null "$pkgdir/usr/share/ark-distrobox/hooks/99-distrobox-export-remove.hook"
@@ -49,7 +49,7 @@ Target = usr/share/applications/*.desktop
 Description = Un-exporting applications from host...
 When = PreTransaction
 NeedsTargets
-Exec = /usr/bin/bash -c 'while read -r f; do distrobox-export -d --app "\$(basename "\$f" .desktop)" 2>/dev/null || true; done'
+Exec = /usr/bin/bash -c 'USER_NAME=\$(id -un 1000 2>/dev/null || echo root); while read -r f; do sudo -u "\$USER_NAME" distrobox-export -d --app "\$(basename "\$f" .desktop)" 2>/dev/null || true; done'
 EOF
 
   # 7. Distrobox interactive shell hook
