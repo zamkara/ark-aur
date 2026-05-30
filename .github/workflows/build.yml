@@ -102,6 +102,7 @@ jobs:
             passwd -d builduser
             echo 'builduser ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builduser
 
+            chown -R builduser:builduser /work/${{ matrix.package }}
             sudo -u builduser bash -c '
               cd /work/${{ matrix.package }}
               makepkg -s --noconfirm
