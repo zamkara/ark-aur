@@ -22,18 +22,6 @@ package() {
   install -Dm644 /dev/null "$pkgdir/usr/lib/bootc/kargs.d/01-silent-boot.toml"
   echo 'kargs = ["quiet", "splash", "loglevel=3", "rd.udev.log_priority=3", "vt.global_cursor_default=0", "boot.shell_on_fail=1"]' > "$pkgdir/usr/lib/bootc/kargs.d/01-silent-boot.toml"
 
-  # 5. Alga Updater desktop file
-  install -Dm644 /dev/null "$pkgdir/usr/share/applications/alga-updater.desktop"
-  cat <<EOF > "$pkgdir/usr/share/applications/alga-updater.desktop"
-[Desktop Entry]
-Name=Software Updater
-Comment=Update Arch Linux
-Exec=alga
-Icon=software-update-available-symbolic
-Type=Application
-Categories=System;Settings;
-EOF
-
   # 6. Distrobox pacman hooks
   install -Dm644 /dev/null "$pkgdir/usr/share/ark-distrobox/hooks/99-distrobox-export-install.hook"
   cat <<EOF > "$pkgdir/usr/share/ark-distrobox/hooks/99-distrobox-export-install.hook"
