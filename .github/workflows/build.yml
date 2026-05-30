@@ -134,7 +134,7 @@ jobs:
           path: aur-packages/
           merge-multiple: true
       - name: Delete old release
-        run: gh release delete latest --cleanup-tag -y || true
+        run: gh release delete latest --cleanup-tag -y -R ${{ github.repository }} || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Create Nightly Release
