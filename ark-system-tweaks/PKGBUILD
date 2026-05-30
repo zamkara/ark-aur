@@ -1,0 +1,95 @@
+pkgname=ark-system-tweaks
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="System configuration and tweaks for Ark Linux"
+arch=('any')
+license=('MIT')
+depends=('bash' 'distrobox' 'plymouth' 'bootupd' 'morewaita-icon-theme' 'glib2')
+
+package() {
+  # 1. OSTree prepare-root config
+  install -Dm644 /dev/null "$pkgdir/etc/ostree/prepare-root.conf"
+  echo '[sysroot]' > "$pkgdir/etc/ostree/prepare-root.conf"
+
+  # 2. Plymouth BGRT theme config
+  install -Dm644 /dev/null "$pkgdir/etc/plymouth/plymouthd.conf"
+  echo -e "[Daemon]\nTheme=bgrt" > "$pkgdir/etc/plymouth/plymouthd.conf"
+
+  # 3. Emergency service override
+  install -Dm644 /dev/null "$pkgdir/etc/systemd/system/emergency.service.d/override.conf"
+  echo -e "[Service]\nEnvironment=SYSTEMD_SULOGIN_FORCE=1" > "$pkgdir/etc/systemd/system/emergency.service.d/override.conf"
+
+  # 4. Silent boot kargs
+  install -Dm644 /dev/null "$pkgdir/usr/lib/bootc/kargs.d/01-silent-boot.toml"
+  echo 'kargs = ["quiet", "splash", "loglevel=3", "rd.udev.log_priority=3", "vt.global_cursor_default=0", "boot.shell_on_fail=1"]' > "$pkgdir/usr/lib/bootc/kargs.d/01-silent-boot.toml"
+
+  # 5. Alga Updater desktop file
+  install -Dm644 /dev/null "$pkgdir/usr/share/applications/alga-updater.desktop"
+  cat <<EOF > "$pkgdir/usr/share/applications/alga-updater.desktop"
+[Desktop Entry]
+Name=Software Updater
+Comment=Update Arch Linux
+Exec=alga
+Icon=software-update-available-symbolic
+Type=Application
+Categories=System;Settings;
+EOF
+
+  # 6. Distrobox pacman hooks
+  install -Dm644 /dev/null "$pkgdir/usr/share/ark-distrobox/hooks/99-distrobox-export-install.hook"
+  cat <<EOF > "$pkgdir/usr/share/ark-distrobox/hooks/99-distrobox-export-install.hook"
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Path
+Target = usr/share/applications/*.desktop
+
+[Action]
+Description = Exporting applications to host...
+When = PostTransaction
+NeedsTargets
+Exec = /usr/bin/bash -c 'while read -r f; do distrobox-export --app "\$(basename "\$f" .desktop)" --export-label "none" 2>/dev/null || true; done'
+EOF
+
+  install -Dm644 /dev/null "$pkgdir/usr/share/ark-distrobox/hooks/99-distrobox-export-remove.hook"
+  cat <<EOF > "$pkgdir/usr/share/ark-distrobox/hooks/99-distrobox-export-remove.hook"
+[Trigger]
+Operation = Remove
+Type = Path
+Target = usr/share/applications/*.desktop
+
+[Action]
+Description = Un-exporting applications from host...
+When = PreTransaction
+NeedsTargets
+Exec = /usr/bin/bash -c 'while read -r f; do distrobox-export -d --app "\$(basename "\$f" .desktop)" 2>/dev/null || true; done'
+EOF
+
+  # 7. Distrobox interactive shell hook
+  install -Dm644 /dev/null "$pkgdir/etc/profile.d/99-arch-distrobox.sh"
+  cat <<'EOF' > "$pkgdir/etc/profile.d/99-arch-distrobox.sh"
+if [[ $- == *i* ]] && [ -z "$CONTAINER_ID" ]; then
+    if [ "$EUID" -ne 0 ]; then
+        if ! distrobox list | grep -q "arch"; then
+            echo "Initializing Arch Linux environment..."
+            distrobox create --name arch --image docker.io/archlinux:latest --init-hooks "mkdir -p /etc/pacman.d/hooks && cp /run/host/usr/share/ark-distrobox/hooks/*.hook /etc/pacman.d/hooks/" -Y > /dev/null 2>&1
+        fi
+        exec distrobox enter arch
+    fi
+fi
+EOF
+
+  # 8. OS-release patch
+  install -Dm644 /dev/null "$pkgdir/usr/lib/os-release"
+  echo 'VERSION_ID="rolling"' > "$pkgdir/usr/lib/os-release"
+
+  # 9. Gschema override for MoreWaita
+  install -Dm644 /dev/null "$pkgdir/usr/share/glib-2.0/schemas/99-ark-theme.gschema.override"
+  echo -e "[org.gnome.desktop.interface]\nicon-theme='MoreWaita'" > "$pkgdir/usr/share/glib-2.0/schemas/99-ark-theme.gschema.override"
+
+  # 10. bootupd symlinks
+  install -d "$pkgdir/usr/sbin"
+  install -d "$pkgdir/usr/bin"
+  ln -s /usr/libexec/bootupd "$pkgdir/usr/sbin/bootupd"
+  ln -s /usr/libexec/bootupd "$pkgdir/usr/bin/bootupd"
+}

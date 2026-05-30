@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        package: [bootupd, bootc]
+        package: [bootupd, bootc, morewaita-icon-theme]
     steps:
       - uses: actions/checkout@v4
       - name: Get AUR Version
@@ -73,8 +73,50 @@ jobs:
           name: aur-package-${{ matrix.package }}
           path: aur-out/*.pkg.tar.zst
 
+  build-local-packages:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: [alga, ark-system-tweaks]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Pacman Local Build
+        uses: actions/cache@v4
+        with:
+          path: pacman-local-cache/
+          key: ${{ runner.os }}-pacman-local-v1
+      - name: Cache Cargo Local Build
+        uses: actions/cache@v4
+        with:
+          path: cargo-local-cache-${{ matrix.package }}/
+          key: ${{ runner.os }}-cargo-local-${{ matrix.package }}-v1
+      - name: Prepare Cache Dir
+        run: |
+          mkdir -p pacman-local-cache cargo-local-cache-${{ matrix.package }} aur-out
+      - name: Build Local package in Arch container
+        run: |
+          sudo podman run --rm --privileged -v $(pwd):/work -v $(pwd)/pacman-local-cache:/var/cache/pacman/pkg -v $(pwd)/cargo-local-cache-${{ matrix.package }}:/home/builduser/.cargo -w /work docker.io/archlinux:latest bash -c "
+            pacman -Syu --noconfirm base-devel git sudo rust
+            useradd -m builduser || true
+            chown -R builduser:builduser /home/builduser
+            passwd -d builduser
+            echo 'builduser ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builduser
+
+            sudo -u builduser bash -c '
+              cd /work/${{ matrix.package }}
+              makepkg -s --noconfirm
+            '
+            cp /work/${{ matrix.package }}/*.pkg.tar.zst /work/aur-out/
+          "
+          sudo chown -R $USER:$USER aur-out/ pacman-local-cache/ cargo-local-cache-${{ matrix.package }}/
+      - name: Upload Local package Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: local-package-${{ matrix.package }}
+          path: aur-out/*.pkg.tar.zst
+
   release:
-    needs: [build-aur-packages]
+    needs: [build-aur-packages, build-local-packages]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
@@ -82,6 +124,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: aur-package-*
+          path: aur-packages/
+          merge-multiple: true
+      - name: Download Local packages
+        uses: actions/download-artifact@v4
+        with:
+          pattern: local-package-*
           path: aur-packages/
           merge-multiple: true
       - name: Create Nightly Release
