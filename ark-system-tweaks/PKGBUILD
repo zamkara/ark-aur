@@ -1,6 +1,6 @@
 pkgname=ark-system-tweaks
 pkgver=1.0.0
-pkgrel=2
+pkgrel=3
 pkgdesc="System configuration and tweaks for Ark Linux"
 arch=('any')
 license=('MIT')
@@ -94,6 +94,9 @@ categories=['Distrobox']
 
 [org.gnome.desktop.app-folders.folder:/org/gnome/desktop/app-folders/folders/System/]
 apps=['nm-connection-editor.desktop', 'org.gnome.baobab.desktop', 'org.gnome.DiskUtility.desktop', 'org.gnome.Logs.desktop', 'org.freedesktop.MalcontentControl.desktop', 'org.gnome.SystemMonitor.desktop', 'org.gnome.tweaks.desktop', 'bvnc.desktop', 'bssh.desktop', 'qvidcap.desktop', 'qv4l2.desktop', 'tuned-gui.desktop', 'rmpc.desktop', 'com-maxrave-simpmusic-MainKt.desktop', 'xarchiver.desktop', 'org.gnome.Settings.desktop', 'com.zamkara.alga.desktop']
+
+[org.gnome.desktop.app-folders.folder:/org/gnome/desktop/app-folders/folders/Utilities/]
+apps=['gnome-abrt.desktop', 'gnome-system-log.desktop', 'nm-connection-editor.desktop', 'org.gnome.baobab.desktop', 'org.gnome.Connections.desktop', 'org.gnome.DejaDup.desktop', 'org.gnome.Dictionary.desktop', 'org.gnome.DiskUtility.desktop', 'org.gnome.Evince.desktop', 'org.gnome.FileRoller.desktop', 'org.gnome.fonts.desktop', 'org.gnome.Loupe.desktop', 'org.gnome.seahorse.Application.desktop', 'org.gnome.tweaks.desktop', 'org.gnome.Usage.desktop', 'vinagre.desktop', 'org.gnome.Ptyxis.desktop', 'com.ranfdev.DistroShelf.desktop', 'com.github.marhkb.Pods.desktop']
 EOF
   # 10. bootupd symlinks
   install -d "$pkgdir/usr/bin"

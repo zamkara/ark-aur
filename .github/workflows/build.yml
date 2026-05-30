@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        package: [bootupd, bootc, morewaita-icon-theme]
+        package: [bootupd, bootc, morewaita-icon-theme, pods, distroshelf]
     steps:
       - uses: actions/checkout@v4
       - name: Get AUR Version
@@ -133,6 +133,10 @@ jobs:
           pattern: local-package-*
           path: aur-packages/
           merge-multiple: true
+      - name: Delete old release
+        run: gh release delete latest --cleanup-tag -y || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Create Nightly Release
         uses: softprops/action-gh-release@v2
         with:
