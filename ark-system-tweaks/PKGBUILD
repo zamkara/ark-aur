@@ -4,7 +4,6 @@ pkgrel=1
 pkgdesc="System configuration and tweaks for Ark Linux"
 arch=('any')
 license=('MIT')
-depends=('bash' 'distrobox' 'plymouth' 'bootupd' 'morewaita-icon-theme' 'glib2')
 
 package() {
   # 1. OSTree prepare-root config
