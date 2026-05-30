@@ -13,8 +13,6 @@ permissions:
 jobs:
   build-aur-packages:
     runs-on: ubuntu-latest
-  push:
-    branches: [main]
     strategy:
       matrix:
         package: [bootupd, bootc]
@@ -78,8 +76,6 @@ jobs:
   release:
     needs: [build-aur-packages]
     runs-on: ubuntu-latest
-  push:
-    branches: [main]
     if: github.ref == 'refs/heads/main'
     steps:
       - name: Download AUR packages
