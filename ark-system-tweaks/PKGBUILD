@@ -1,6 +1,6 @@
 pkgname=ark-system-tweaks
 pkgver=1.0.0
-pkgrel=5
+pkgrel=6
 pkgdesc="System configuration and tweaks for Ark Linux"
 arch=('any')
 license=('MIT')
