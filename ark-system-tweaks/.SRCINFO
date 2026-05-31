@@ -1,0 +1,8 @@
+pkgbase = ark-system-tweaks
+	pkgdesc = System configuration and tweaks for Ark Linux
+	pkgver = 1.0.0
+	pkgrel = 3
+	arch = any
+	license = MIT
+
+pkgname = ark-system-tweaks

@@ -65,19 +65,25 @@ NeedsTargets
 Exec = /usr/bin/bash -c 'USER_NAME=\$(id -un 1000 2>/dev/null || echo root); while read -r f; do sudo -u "\$USER_NAME" distrobox-export -d --app "\$(basename "\$f" .desktop)" 2>/dev/null || true; done'
 EOF
 
-  # 7. Distrobox interactive shell hook
-  install -Dm644 /dev/null "$pkgdir/etc/profile.d/99-arch-distrobox.sh"
-  cat <<'EOF' > "$pkgdir/etc/profile.d/99-arch-distrobox.sh"
-if [[ $- == *i* ]] && [ -z "$CONTAINER_ID" ]; then
-    if [ "$EUID" -ne 0 ]; then
-        if ! distrobox list | grep -q "arch"; then
-            echo "Initializing Arch Linux environment..."
-            distrobox create --name arch --image docker.io/archlinux:latest --init-hooks "mkdir -p /etc/pacman.d/hooks && cp /run/host/usr/share/ark-distrobox/hooks/*.hook /etc/pacman.d/hooks/" -Y > /dev/null 2>&1
-        fi
-        exec distrobox enter arch
-    fi
-fi
+  # 7. Background Distrobox initialization
+  install -Dm644 /dev/null "$pkgdir/usr/lib/systemd/user/distrobox-init.service"
+  cat <<'EOF' > "$pkgdir/usr/lib/systemd/user/distrobox-init.service"
+[Unit]
+Description=Initialize Default Distrobox
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash -c 'if ! distrobox list | grep -q "arch"; then distrobox create --name arch --image docker.io/archlinux:latest --init-hooks "mkdir -p /etc/pacman.d/hooks && cp /run/host/usr/share/ark-distrobox/hooks/*.hook /etc/pacman.d/hooks/" -Y; fi'
+RemainAfterExit=yes
+
+[Install]
+WantedBy=default.target
 EOF
+
+  install -d "$pkgdir/usr/lib/systemd/user/default.target.wants"
+  ln -s /usr/lib/systemd/user/distrobox-init.service "$pkgdir/usr/lib/systemd/user/default.target.wants/distrobox-init.service"
 
   install -Dm644 /dev/null "$pkgdir/usr/share/glib-2.0/schemas/99-ark-theme.gschema.override"
   cat <<'EOF' > "$pkgdir/usr/share/glib-2.0/schemas/99-ark-theme.gschema.override"
@@ -93,10 +99,10 @@ translate=true
 categories=['Distrobox']
 
 [org.gnome.desktop.app-folders.folder:/org/gnome/desktop/app-folders/folders/System/]
-apps=['nm-connection-editor.desktop', 'org.gnome.baobab.desktop', 'org.gnome.DiskUtility.desktop', 'org.gnome.Logs.desktop', 'org.freedesktop.MalcontentControl.desktop', 'org.gnome.SystemMonitor.desktop', 'org.gnome.tweaks.desktop', 'bvnc.desktop', 'bssh.desktop', 'qvidcap.desktop', 'qv4l2.desktop', 'tuned-gui.desktop', 'rmpc.desktop', 'com-maxrave-simpmusic-MainKt.desktop', 'xarchiver.desktop', 'org.gnome.Settings.desktop', 'com.zamkara.alga.desktop']
+apps=['nm-connection-editor.desktop', 'org.gnome.baobab.desktop', 'org.gnome.DiskUtility.desktop', 'org.gnome.Logs.desktop', 'org.freedesktop.MalcontentControl.desktop', 'org.gnome.SystemMonitor.desktop', 'org.gnome.tweaks.desktop', 'bvnc.desktop', 'bssh.desktop', 'qvidcap.desktop', 'qv4l2.desktop', 'tuned-gui.desktop', 'rmpc.desktop', 'com-maxrave-simpmusic-MainKt.desktop', 'xarchiver.desktop', 'org.gnome.Settings.desktop', 'com.zamkara.alga.desktop', 'avahi-discover.desktop', 'lstopo.desktop']
 
 [org.gnome.desktop.app-folders.folder:/org/gnome/desktop/app-folders/folders/Utilities/]
-apps=['gnome-abrt.desktop', 'gnome-system-log.desktop', 'nm-connection-editor.desktop', 'org.gnome.baobab.desktop', 'org.gnome.Connections.desktop', 'org.gnome.DejaDup.desktop', 'org.gnome.Dictionary.desktop', 'org.gnome.DiskUtility.desktop', 'org.gnome.Evince.desktop', 'org.gnome.FileRoller.desktop', 'org.gnome.fonts.desktop', 'org.gnome.Loupe.desktop', 'org.gnome.seahorse.Application.desktop', 'org.gnome.tweaks.desktop', 'org.gnome.Usage.desktop', 'vinagre.desktop', 'org.gnome.Ptyxis.desktop', 'com.ranfdev.DistroShelf.desktop', 'com.github.marhkb.Pods.desktop']
+apps=['gnome-abrt.desktop', 'gnome-system-log.desktop', 'org.gnome.Connections.desktop', 'org.gnome.DejaDup.desktop', 'org.gnome.Dictionary.desktop', 'org.gnome.Evince.desktop', 'org.gnome.FileRoller.desktop', 'org.gnome.fonts.desktop', 'org.gnome.Loupe.desktop', 'org.gnome.seahorse.Application.desktop', 'org.gnome.Usage.desktop', 'vinagre.desktop', 'org.gnome.Ptyxis.desktop', 'com.ranfdev.DistroShelf.desktop', 'com.github.marhkb.Pods.desktop']
 EOF
   # 10. bootupd symlinks
   install -d "$pkgdir/usr/bin"
