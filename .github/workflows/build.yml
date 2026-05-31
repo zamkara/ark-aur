@@ -77,7 +77,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        package: [alga, ark-system-tweaks]
+        package: [ark-system-tweaks]
     steps:
       - uses: actions/checkout@v4
       - name: Cache Pacman Local Build
