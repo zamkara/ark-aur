@@ -1,6 +1,6 @@
 pkgname=ark-system-tweaks
 pkgver=1.0.0
-pkgrel=4
+pkgrel=5
 pkgdesc="System configuration and tweaks for Ark Linux"
 arch=('any')
 license=('MIT')
@@ -89,9 +89,10 @@ EOF
   cat <<'EOF' > "$pkgdir/usr/share/glib-2.0/schemas/99-ark-theme.gschema.override"
 [org.gnome.desktop.interface]
 icon-theme='MoreWaita'
+color-scheme='prefer-dark'
 
 [org.gnome.desktop.app-folders]
-folder-children=['System', 'Utilities', 'YaST', 'Pardus', 'Containers']
+folder-children=['System', 'Utilities', 'Containers']
 
 [org.gnome.desktop.app-folders.folder:/org/gnome/desktop/app-folders/folders/Containers/]
 name='Containers'
@@ -101,12 +102,12 @@ categories=['Distrobox']
 [org.gnome.desktop.app-folders.folder:/org/gnome/desktop/app-folders/folders/System/]
 name='System'
 translate=true
-apps=['nm-connection-editor.desktop', 'org.gnome.baobab.desktop', 'org.gnome.DiskUtility.desktop', 'org.gnome.Logs.desktop', 'org.freedesktop.MalcontentControl.desktop', 'org.gnome.SystemMonitor.desktop', 'org.gnome.tweaks.desktop', 'bvnc.desktop', 'bssh.desktop', 'qvidcap.desktop', 'qv4l2.desktop', 'tuned-gui.desktop', 'rmpc.desktop', 'com-maxrave-simpmusic-MainKt.desktop', 'xarchiver.desktop', 'org.gnome.Settings.desktop', 'com.zamkara.alga.desktop', 'avahi-discover.desktop', 'lstopo.desktop']
+apps=['org.gnome.Settings.desktop', 'com.zamkara.alga.desktop', 'gnome-system-monitor.desktop']
 
 [org.gnome.desktop.app-folders.folder:/org/gnome/desktop/app-folders/folders/Utilities/]
 name='Utilities'
 translate=true
-apps=['gnome-abrt.desktop', 'gnome-system-log.desktop', 'org.gnome.Connections.desktop', 'org.gnome.DejaDup.desktop', 'org.gnome.Dictionary.desktop', 'org.gnome.Evince.desktop', 'org.gnome.FileRoller.desktop', 'org.gnome.fonts.desktop', 'org.gnome.Loupe.desktop', 'org.gnome.seahorse.Application.desktop', 'org.gnome.Usage.desktop', 'vinagre.desktop', 'org.gnome.Ptyxis.desktop', 'com.ranfdev.DistroShelf.desktop', 'com.github.marhkb.Pods.desktop']
+apps=['org.gnome.Ptyxis.desktop', 'com.ranfdev.DistroShelf.desktop', 'com.github.marhkb.Pods.desktop', 'org.gnome.DejaDup.desktop', 'org.gnome.FileRoller.desktop', 'org.gnome.fonts.desktop', 'org.gnome.Loupe.desktop', 'org.gnome.seahorse.Application.desktop']
 EOF
   # 10. bootupd symlinks
   install -d "$pkgdir/usr/bin"
