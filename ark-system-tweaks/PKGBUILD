@@ -112,4 +112,19 @@ EOF
   # 10. bootupd symlinks
   install -d "$pkgdir/usr/bin"
   ln -s /usr/libexec/bootupd "$pkgdir/usr/bin/bootupd"
+
+  # 11. Compile and package all UTF-8 locales
+  mkdir -p "$pkgdir/usr/lib/locale"
+  install -Dm644 /etc/locale.gen "$pkgdir/etc/locale.gen"
+  sed -i 's/^#\(.*UTF-8.*\)/\1/' "$pkgdir/etc/locale.gen"
+  sed -i '/@/s/^/#/' "$pkgdir/etc/locale.gen"
+  
+  echo "Pre-compiling all UTF-8 locales into package..."
+  grep -v '^#' "$pkgdir/etc/locale.gen" | while read -r line; do
+    if [ -n "$line" ]; then
+      locale=$(echo "$line" | awk '{print $1}')
+      charmap=$(echo "$line" | awk '{print $2}')
+      localedef -i "${locale%.*}" -f "$charmap" --alias /usr/share/locale/locale.alias "$pkgdir/usr/lib/locale/locale-archive" || true
+    fi
+  done
 }
