@@ -1,6 +1,6 @@
 pkgname=ark-system-tweaks
 pkgver=1.0.0
-pkgrel=7
+pkgrel=8
 pkgdesc="System configuration and tweaks for Ark Linux"
 arch=('any')
 license=('MIT')
@@ -113,17 +113,20 @@ EOF
   ln -s /usr/libexec/bootupd "$pkgdir/usr/bin/bootupd"
 
   # 11. Compile and package all UTF-8 locales
+  # NOTE: do NOT ship /etc/locale.gen — it is owned by glibc and would conflict.
+  # Use a temp copy for compilation only; ship only the compiled locale-archive.
   mkdir -p "$pkgdir/usr/lib/locale"
-  install -Dm644 /etc/locale.gen "$pkgdir/etc/locale.gen"
-  sed -i 's/^#\(.*UTF-8.*\)/\1/' "$pkgdir/etc/locale.gen"
-  sed -i '/@/s/^/#/' "$pkgdir/etc/locale.gen"
-  
+  cp /etc/locale.gen /tmp/ark-locale-build.gen
+  sed -i 's/^#\(.*UTF-8.*\)/\1/' /tmp/ark-locale-build.gen
+  sed -i '/@/s/^/#/' /tmp/ark-locale-build.gen
+
   echo "Pre-compiling all UTF-8 locales into package..."
-  grep -v '^#' "$pkgdir/etc/locale.gen" | while read -r line; do
+  grep -v '^#' /tmp/ark-locale-build.gen | while read -r line; do
     if [ -n "$line" ]; then
       locale=$(echo "$line" | awk '{print $1}')
       charmap=$(echo "$line" | awk '{print $2}')
       localedef -i "${locale%.*}" -f "$charmap" --alias /usr/share/locale/locale.alias "$pkgdir/usr/lib/locale/locale-archive" || true
     fi
   done
+  rm -f /tmp/ark-locale-build.gen
 }
