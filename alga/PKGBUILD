@@ -1,6 +1,6 @@
 pkgname=alga
 pkgver=1.0.0
-pkgrel=1
+pkgrel=2
 pkgdesc="A GTK4/Libadwaita frontend for bootc operations"
 arch=('x86_64')
 url="https://github.com/zamkara/alga"
@@ -18,6 +18,6 @@ build() {
 package() {
   cd "$pkgname"
   install -Dm755 "target/release/alga" "$pkgdir/usr/bin/alga"
-  install -Dm644 "assets/alga.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/alga.svg"
-  install -Dm644 "assets/alga.desktop" "$pkgdir/usr/share/applications/alga.desktop"
+  install -Dm644 "data/alga.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/alga.svg" || true
+  install -Dm644 "data/alga.desktop" "$pkgdir/usr/share/applications/alga.desktop" || true
 }
