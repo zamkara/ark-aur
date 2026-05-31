@@ -137,11 +137,14 @@ jobs:
           "
           # Compress the cache folder
           tar -czf pacman-cache.tar.gz -C pacman-cache .
+          # Split the tarball into 1200MB chunks to bypass GitHub Release size limit (2GB)
+          split -b 1200M pacman-cache.tar.gz pacman-cache.tar.gz.part-
+          rm pacman-cache.tar.gz
       - name: Upload Pacman Cache Artifact
         uses: actions/upload-artifact@v4
         with:
           name: pacman-cache-tarball
-          path: pacman-cache.tar.gz
+          path: pacman-cache.tar.gz.part-*
 
   release:
     needs: [build-aur-packages, build-local-packages, download-pacman-cache]
@@ -178,6 +181,6 @@ jobs:
             Automated build for `bootc`, `bootupd`, and offline package cache.
           files: |
             aur-packages/*.pkg.tar.zst
-            pacman-cache/pacman-cache.tar.gz
+            pacman-cache/pacman-cache.tar.gz.part-*
           prerelease: true
           make_latest: true
