@@ -1,6 +1,6 @@
 pkgname=ark-system-tweaks
 pkgver=1.0.0
-pkgrel=8
+pkgrel=9
 pkgdesc="System configuration and tweaks for Ark Linux"
 arch=('any')
 license=('MIT')
@@ -48,7 +48,7 @@ Target = usr/share/applications/*.desktop
 Description = Exporting applications to host...
 When = PostTransaction
 NeedsTargets
-Exec = /usr/bin/bash -c 'USER_NAME=\$(id -un 1000 2>/dev/null || echo root); while read -r f; do sudo -u "\$USER_NAME" distrobox-export --app "\$(basename "\$f" .desktop)" --export-label "none" 2>/dev/null || true; done'
+Exec = /usr/bin/bash -c 'USER_UID=\$(getent passwd | awk -F: "\$3 >= 1000 && \$3 < 65534 {print \$3; exit}"); [ -z "\$USER_UID" ] && USER_UID=1000; USER_NAME=\$(getent passwd "\$USER_UID" | cut -d: -f1); while read -r f; do HOME=/home/\$USER_NAME USER=\$USER_NAME XDG_RUNTIME_DIR=/run/user/\$USER_UID DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/\$USER_UID/bus distrobox-export --app "\$(basename "\$f" .desktop)" --export-label "none" 2>/dev/null || true; done'
 EOF
 
   install -Dm644 /dev/null "$pkgdir/usr/share/ark-distrobox/hooks/99-distrobox-export-remove.hook"
@@ -62,7 +62,7 @@ Target = usr/share/applications/*.desktop
 Description = Un-exporting applications from host...
 When = PreTransaction
 NeedsTargets
-Exec = /usr/bin/bash -c 'USER_NAME=\$(id -un 1000 2>/dev/null || echo root); while read -r f; do sudo -u "\$USER_NAME" distrobox-export -d --app "\$(basename "\$f" .desktop)" 2>/dev/null || true; done'
+Exec = /usr/bin/bash -c 'USER_UID=\$(getent passwd | awk -F: "\$3 >= 1000 && \$3 < 65534 {print \$3; exit}"); [ -z "\$USER_UID" ] && USER_UID=1000; USER_NAME=\$(getent passwd "\$USER_UID" | cut -d: -f1); while read -r f; do HOME=/home/\$USER_NAME USER=\$USER_NAME XDG_RUNTIME_DIR=/run/user/\$USER_UID DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/\$USER_UID/bus distrobox-export -d --app "\$(basename "\$f" .desktop)" 2>/dev/null || true; done'
 EOF
 
   # 7. Background Distrobox initialization
@@ -107,6 +107,14 @@ apps=['org.gnome.Settings.desktop', 'com.zamkara.alga.desktop', 'gnome-system-mo
 name='Utilities'
 translate=true
 apps=['org.gnome.Ptyxis.desktop', 'com.ranfdev.DistroShelf.desktop', 'com.github.marhkb.Pods.desktop', 'org.gnome.DejaDup.desktop', 'org.gnome.FileRoller.desktop', 'org.gnome.fonts.desktop', 'org.gnome.Loupe.desktop', 'org.gnome.seahorse.Application.desktop']
+
+[org.gnome.Ptyxis]
+default-profile-uuid='de305d54-75b4-431b-aba2-ebf0c43ef187'
+profile-uuids=['de305d54-75b4-431b-aba2-ebf0c43ef187']
+
+[org.gnome.Ptyxis.Profile:/org/gnome/Ptyxis/Profiles/de305d54-75b4-431b-aba2-ebf0c43ef187/]
+label='Arch Linux'
+default-container='arch'
 EOF
   # 10. bootupd symlinks
   install -d "$pkgdir/usr/bin"
