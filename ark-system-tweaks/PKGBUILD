@@ -1,6 +1,6 @@
 pkgname=ark-system-tweaks
 pkgver=1.0.0
-pkgrel=11
+pkgrel=12
 pkgdesc="System configuration and tweaks for Ark Linux"
 arch=('any')
 license=('MIT')
@@ -105,7 +105,86 @@ Exec = /usr/bin/bash -c '
 '
 EOF
 
-  # 9. GSchema override (theme + app folders)
+  # 9. GRUB update script (regenerate grub.cfg from BLS entries)
+  install -Dm755 /dev/null "$pkgdir/usr/share/ark/grub-update.sh"
+  script="$(cat <<'GRUBEOF'
+#!/bin/bash
+set -e
+ROOT_UUID=$(findmnt -no UUID /)
+BOOT_UUID=$(findmnt -no UUID /boot 2>/dev/null || true)
+HAS_SEP_BOOT=false
+[ -n "$BOOT_UUID" ] && [ "$BOOT_UUID" != "$ROOT_UUID" ] && HAS_SEP_BOOT=true
+GRUB_CFG="/boot/grub/grub.cfg"
+mkdir -p "$(dirname "$GRUB_CFG")"
+printf "set default=0\nset timeout=5\n\n" > "$GRUB_CFG"
+entries=()
+for f in /boot/loader/entries/ostree-*.conf; do
+  [ -f "$f" ] && entries+=("$f")
+done
+if [ ${#entries[@]} -eq 0 ]; then
+  {
+    echo 'menuentry "Arch Linux" {'
+    echo "    search --no-floppy --fs-uuid $ROOT_UUID --set=root"
+    echo "    linux /boot/vmlinuz-linux root=UUID=$ROOT_UUID rw quiet splash loglevel=3"
+    echo "    initrd /boot/initramfs-linux.img"
+    echo '}'
+  } >> "$GRUB_CFG"
+  echo "Warning: No BLS entries found, generated fallback grub.cfg"
+  exit 0
+fi
+IFS=$'\n'
+sorted=($(sort -t- -k2 -rn <<<"${entries[*]}"))
+unset IFS
+count=0
+for entry_file in "${sorted[@]}"; do
+  title=$(sed -n 's/^title //p' "$entry_file" | head -n1)
+  linux_rel=$(sed -n 's/^linux //p' "$entry_file" | head -n1)
+  initrd_rel=$(sed -n 's/^initrd //p' "$entry_file" | head -n1)
+  options=$(sed -n 's/^options //p' "$entry_file" | head -n1)
+  [ -z "$linux_rel" ] && continue
+  if [ "$HAS_SEP_BOOT" = true ]; then
+    linux_path="($boot_root)$linux_rel"
+    initrd_path="($boot_root)$initrd_rel"
+  else
+    linux_path="($root)$linux_rel"
+    initrd_path="($root)$initrd_rel"
+  fi
+  label="$title"
+  [ "$count" -gt 0 ] && label="$title (previous)"
+  {
+    echo 'menuentry "'"$label"'" {'
+    echo "    search --no-floppy --fs-uuid $ROOT_UUID --set=root"
+    if [ "$HAS_SEP_BOOT" = true ]; then
+      echo "    search --no-floppy --fs-uuid $BOOT_UUID --set=boot_root"
+    fi
+    echo "    linux $linux_path $options"
+    echo "    initrd $initrd_path"
+    echo '}'
+    echo ''
+  } >> "$GRUB_CFG"
+  count=$((count + 1))
+done
+echo "Generated $count GRUB entries from OSTree BLS entries"
+GRUBEOF
+)"
+  printf '%s\n' "$script" > "$pkgdir/usr/share/ark/grub-update.sh"
+
+  # 10. GRUB update systemd service
+  install -Dm644 /dev/null "$pkgdir/etc/systemd/system/ark-grub-update.service"
+  cat <<'SVCEOF' > "$pkgdir/etc/systemd/system/ark-grub-update.service"
+[Unit]
+Description=Ark GRUB boot entry regeneration from OSTree deployments
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/share/ark/grub-update.sh
+
+[Install]
+WantedBy=multi-user.target
+SVCEOF
+
+  # 11. GSchema override (theme + app folders)
   install -Dm644 /dev/null "$pkgdir/usr/share/glib-2.0/schemas/99-ark-theme.gschema.override"
   cat <<'EOF' > "$pkgdir/usr/share/glib-2.0/schemas/99-ark-theme.gschema.override"
 [org.gnome.desktop.interface]
@@ -129,11 +208,11 @@ name='Utilities'
 translate=true
 apps=['org.gnome.Console.desktop', 'com.ranfdev.DistroShelf.desktop', 'com.github.marhkb.Pods.desktop', 'org.gnome.DejaDup.desktop', 'org.gnome.FileRoller.desktop', 'org.gnome.fonts.desktop', 'org.gnome.Loupe.desktop', 'org.gnome.seahorse.Application.desktop']
 EOF
-  # 10. bootupd symlinks
+  # 12. bootupd symlinks
   install -d "$pkgdir/usr/bin"
   ln -s /usr/libexec/bootupd "$pkgdir/usr/bin/bootupd"
 
-  # 11. Compile and package all UTF-8 locales
+  # 13. Compile and package all UTF-8 locales
   # NOTE: do NOT ship /etc/locale.gen — it is owned by glibc and would conflict.
   # Use a temp copy for compilation only; ship only the compiled locale-archive.
   mkdir -p "$pkgdir/usr/lib/locale"
