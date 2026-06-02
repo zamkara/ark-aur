@@ -1,6 +1,6 @@
 pkgname=ark-system-tweaks
 pkgver=1.0.0
-pkgrel=9
+pkgrel=10
 pkgdesc="System configuration and tweaks for Ark Linux"
 arch=('any')
 license=('MIT')
@@ -84,6 +84,22 @@ EOF
 
   install -d "$pkgdir/usr/lib/systemd/user/default.target.wants"
   ln -s /usr/lib/systemd/user/distrobox-init.service "$pkgdir/usr/lib/systemd/user/default.target.wants/distrobox-init.service"
+
+  # 8. Sudoers wheel group
+  install -Dm644 /dev/null "$pkgdir/etc/sudoers.d/10-ark-wheel"
+  cat <<'EOF' > "$pkgdir/etc/sudoers.d/10-ark-wheel"
+%wheel ALL=(ALL:ALL) NOPASSWD: ALL
+EOF
+
+  # 9. Polkit wheel rule
+  install -Dm644 /dev/null "$pkgdir/etc/polkit-1/rules.d/10-ark-wheel.rules"
+  cat <<'EOF' > "$pkgdir/etc/polkit-1/rules.d/10-ark-wheel.rules"
+polkit.addRule(function(action, subject) {
+  if (subject.isInGroup("wheel")) {
+    return polkit.Result.YES;
+  }
+});
+EOF
 
   install -Dm644 /dev/null "$pkgdir/usr/share/glib-2.0/schemas/99-ark-theme.gschema.override"
   cat <<'EOF' > "$pkgdir/usr/share/glib-2.0/schemas/99-ark-theme.gschema.override"
