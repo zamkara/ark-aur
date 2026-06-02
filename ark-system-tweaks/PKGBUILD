@@ -107,7 +107,7 @@ EOF
 
   # 9. GRUB update script (regenerate grub.cfg from BLS entries)
   install -Dm755 /dev/null "$pkgdir/usr/share/ark/grub-update.sh"
-  script="$(cat <<'GRUBEOF'
+  cat > "$pkgdir/usr/share/ark/grub-update.sh" << 'GRUBEOF'
 #!/bin/bash
 set -e
 ROOT_UUID=$(findmnt -no UUID /)
@@ -166,8 +166,6 @@ for entry_file in "${sorted[@]}"; do
 done
 echo "Generated $count GRUB entries from OSTree BLS entries"
 GRUBEOF
-)"
-  printf '%s\n' "$script" > "$pkgdir/usr/share/ark/grub-update.sh"
 
   # 10. GRUB update systemd service
   install -Dm644 /dev/null "$pkgdir/etc/systemd/system/ark-grub-update.service"
