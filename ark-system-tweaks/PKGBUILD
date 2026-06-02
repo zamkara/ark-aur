@@ -1,6 +1,6 @@
 pkgname=ark-system-tweaks
 pkgver=1.0.0
-pkgrel=10
+pkgrel=11
 pkgdesc="System configuration and tweaks for Ark Linux"
 arch=('any')
 license=('MIT')
@@ -35,63 +35,13 @@ EOF
   install -Dm644 /dev/null "$pkgdir/usr/lib/bootc/kargs.d/01-silent-boot.toml"
   echo 'kargs = ["quiet", "splash", "loglevel=3", "rd.udev.log_priority=3", "vt.global_cursor_default=0", "boot.shell_on_fail=1"]' > "$pkgdir/usr/lib/bootc/kargs.d/01-silent-boot.toml"
 
-  # 6. Distrobox pacman hooks
-  install -Dm644 /dev/null "$pkgdir/usr/share/ark-distrobox/hooks/99-distrobox-export-install.hook"
-  cat <<EOF > "$pkgdir/usr/share/ark-distrobox/hooks/99-distrobox-export-install.hook"
-[Trigger]
-Operation = Install
-Operation = Upgrade
-Type = Path
-Target = usr/share/applications/*.desktop
-
-[Action]
-Description = Exporting applications to host...
-When = PostTransaction
-NeedsTargets
-Exec = /usr/bin/bash -c 'USER_UID=\$(getent passwd | awk -F: "\$3 >= 1000 && \$3 < 65534 {print \$3; exit}"); [ -z "\$USER_UID" ] && USER_UID=1000; USER_NAME=\$(getent passwd "\$USER_UID" | cut -d: -f1); while read -r f; do HOME=/home/\$USER_NAME USER=\$USER_NAME XDG_RUNTIME_DIR=/run/user/\$USER_UID DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/\$USER_UID/bus distrobox-export --app "\$(basename "\$f" .desktop)" --export-label "none" 2>/dev/null || true; done'
-EOF
-
-  install -Dm644 /dev/null "$pkgdir/usr/share/ark-distrobox/hooks/99-distrobox-export-remove.hook"
-  cat <<EOF > "$pkgdir/usr/share/ark-distrobox/hooks/99-distrobox-export-remove.hook"
-[Trigger]
-Operation = Remove
-Type = Path
-Target = usr/share/applications/*.desktop
-
-[Action]
-Description = Un-exporting applications from host...
-When = PreTransaction
-NeedsTargets
-Exec = /usr/bin/bash -c 'USER_UID=\$(getent passwd | awk -F: "\$3 >= 1000 && \$3 < 65534 {print \$3; exit}"); [ -z "\$USER_UID" ] && USER_UID=1000; USER_NAME=\$(getent passwd "\$USER_UID" | cut -d: -f1); while read -r f; do HOME=/home/\$USER_NAME USER=\$USER_NAME XDG_RUNTIME_DIR=/run/user/\$USER_UID DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/\$USER_UID/bus distrobox-export -d --app "\$(basename "\$f" .desktop)" 2>/dev/null || true; done'
-EOF
-
-  # 7. Background Distrobox initialization
-  install -Dm644 /dev/null "$pkgdir/usr/lib/systemd/user/distrobox-init.service"
-  cat <<'EOF' > "$pkgdir/usr/lib/systemd/user/distrobox-init.service"
-[Unit]
-Description=Initialize Default Distrobox
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/bash -c 'if distrobox list --no-color 2>/dev/null | grep -qw "arch"; then exit 0; fi; for i in {1..30}; do if ping -c 1 -W 2 archlinux.org >/dev/null 2>&1 || ping -c 1 -W 2 google.com >/dev/null 2>&1; then distrobox create --name arch --image docker.io/archlinux:latest --init-hooks "mkdir -p /etc/pacman.d/hooks && cp /run/host/usr/share/ark-distrobox/hooks/*.hook /etc/pacman.d/hooks/" -Y; exit 0; fi; sleep 10; done'
-RemainAfterExit=yes
-
-[Install]
-WantedBy=default.target
-EOF
-
-  install -d "$pkgdir/usr/lib/systemd/user/default.target.wants"
-  ln -s /usr/lib/systemd/user/distrobox-init.service "$pkgdir/usr/lib/systemd/user/default.target.wants/distrobox-init.service"
-
-  # 8. Sudoers wheel group
+  # 5. Sudoers wheel group
   install -Dm644 /dev/null "$pkgdir/etc/sudoers.d/10-ark-wheel"
   cat <<'EOF' > "$pkgdir/etc/sudoers.d/10-ark-wheel"
 %wheel ALL=(ALL:ALL) NOPASSWD: ALL
 EOF
 
-  # 9. Polkit wheel rule
+  # 6. Polkit wheel rule
   install -Dm644 /dev/null "$pkgdir/etc/polkit-1/rules.d/10-ark-wheel.rules"
   cat <<'EOF' > "$pkgdir/etc/polkit-1/rules.d/10-ark-wheel.rules"
 polkit.addRule(function(action, subject) {
@@ -101,6 +51,61 @@ polkit.addRule(function(action, subject) {
 });
 EOF
 
+  # 7. Arch container entry
+  install -Dm755 /dev/null "$pkgdir/usr/share/ark/enter-arch.sh"
+  cat <<'EOF' > "$pkgdir/usr/share/ark/enter-arch.sh"
+#!/bin/sh
+IMAGE="docker.io/archlinux:latest"
+PREF="$HOME/.config/ark/container-preference"
+if distrobox list --no-color 2>/dev/null | grep -qw "arch"; then
+    exec distrobox enter arch
+fi
+if [ -f "$PREF" ]; then
+    CHOICE=$(cat "$PREF")
+    if [ "$CHOICE" = "yes" ]; then
+        distrobox create --name arch --image "$IMAGE" -Y
+        exec distrobox enter arch
+    elif [ "$CHOICE" = "no" ]; then
+        exec $SHELL -l
+    fi
+fi
+printf "Rn you're runnin in the main shell -- limited, yeah, 'cos immutable sys security. Strongly rec'd: spin up a shell in isolated mode.\n\n"
+printf "Wanna switch to isolated from here on out? Y/n -- non-permanent, changeable anytime. "
+read -r REPLY
+case "$REPLY" in
+    [Nn]*)
+        mkdir -p "$HOME/.config/ark"
+        echo "no" > "$PREF"
+        exec $SHELL -l
+        ;;
+    *)
+        mkdir -p "$HOME/.config/ark"
+        echo "yes" > "$PREF"
+        distrobox create --name arch --image "$IMAGE" -Y
+        exec distrobox enter arch
+        ;;
+esac
+EOF
+
+  # 8. Bashrc hook (append enter-arch to /etc/bash.bashrc)
+  install -Dm644 /dev/null "$pkgdir/usr/share/libalpm/hooks/99-ark-bashrc.hook"
+  cat <<'EOF' > "$pkgdir/usr/share/libalpm/hooks/99-ark-bashrc.hook"
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = bash
+
+[Action]
+Description = Adding Ark container entry hook to bash.bashrc...
+When = PostTransaction
+Exec = /usr/bin/bash -c '
+  LINE="[ -t 0 ] && [ -f /usr/share/ark/enter-arch.sh ] && [ -z \"\$ARK_ENTER_DONE\" ] && { export ARK_ENTER_DONE=1; . /usr/share/ark/enter-arch.sh; }"
+  grep -q "ARK_ENTER_DONE" /etc/bash.bashrc 2>/dev/null || echo "$LINE" >> /etc/bash.bashrc
+'
+EOF
+
+  # 9. GSchema override (theme + app folders)
   install -Dm644 /dev/null "$pkgdir/usr/share/glib-2.0/schemas/99-ark-theme.gschema.override"
   cat <<'EOF' > "$pkgdir/usr/share/glib-2.0/schemas/99-ark-theme.gschema.override"
 [org.gnome.desktop.interface]
@@ -122,15 +127,7 @@ apps=['org.gnome.Settings.desktop', 'com.zamkara.alga.desktop', 'gnome-system-mo
 [org.gnome.desktop.app-folders.folder:/org/gnome/desktop/app-folders/folders/Utilities/]
 name='Utilities'
 translate=true
-apps=['org.gnome.Ptyxis.desktop', 'com.ranfdev.DistroShelf.desktop', 'com.github.marhkb.Pods.desktop', 'org.gnome.DejaDup.desktop', 'org.gnome.FileRoller.desktop', 'org.gnome.fonts.desktop', 'org.gnome.Loupe.desktop', 'org.gnome.seahorse.Application.desktop']
-
-[org.gnome.Ptyxis]
-default-profile-uuid='de305d54-75b4-431b-aba2-ebf0c43ef187'
-profile-uuids=['de305d54-75b4-431b-aba2-ebf0c43ef187']
-
-[org.gnome.Ptyxis.Profile:/org/gnome/Ptyxis/Profiles/de305d54-75b4-431b-aba2-ebf0c43ef187/]
-label='Arch Linux'
-default-container='arch'
+apps=['org.gnome.Console.desktop', 'com.ranfdev.DistroShelf.desktop', 'com.github.marhkb.Pods.desktop', 'org.gnome.DejaDup.desktop', 'org.gnome.FileRoller.desktop', 'org.gnome.fonts.desktop', 'org.gnome.Loupe.desktop', 'org.gnome.seahorse.Application.desktop']
 EOF
   # 10. bootupd symlinks
   install -d "$pkgdir/usr/bin"

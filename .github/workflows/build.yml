@@ -131,7 +131,7 @@ jobs:
               base glibc linux linux-zen linux-lts linux-hardened linux-headers linux-zen-headers linux-lts-headers linux-hardened-headers \
               linux-firmware networkmanager mkinitcpio zram-generator gnome-shell gnome-control-center gnome-disk-utility \
               gnome-keyring gnome-session gnome-settings-daemon nautilus xdg-desktop-portal-gnome xdg-user-dirs-gtk \
-              gnome-backgrounds ptyxis gdm plymouth gnome-software flatpak gnome-initial-setup util-linux openssl \
+              gnome-backgrounds gnome-console gdm plymouth gnome-software flatpak gnome-initial-setup util-linux openssl \
               efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo btrfs-progs podman composefs distrobox ibus \
               iso-codes shadow sudo git nvidia-open nvidia-open-dkms nvidia-utils nvidia-settings dkms
           "
