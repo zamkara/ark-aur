@@ -140,7 +140,7 @@ for entry_file in "${sorted[@]}"; do
   title=$(sed -n 's/^title //p' "$entry_file" | head -n1)
   linux_rel=$(sed -n 's/^linux //p' "$entry_file" | head -n1)
   initrd_rel=$(sed -n 's/^initrd //p' "$entry_file" | head -n1)
-  options=$(sed -n 's/^options //p' "$entry_file" | head -n1)
+  boot_opts=$(sed -n 's/^options //p' "$entry_file" | head -n1)
   [ -z "$linux_rel" ] && continue
   if [ "$HAS_SEP_BOOT" = true ]; then
     linux_path="($boot_root)$linux_rel"
@@ -157,7 +157,7 @@ for entry_file in "${sorted[@]}"; do
     if [ "$HAS_SEP_BOOT" = true ]; then
       echo "    search --no-floppy --fs-uuid $BOOT_UUID --set=boot_root"
     fi
-    echo "    linux $linux_path $options"
+    echo "    linux $linux_path $boot_opts"
     echo "    initrd $initrd_path"
     echo '}'
     echo ''
