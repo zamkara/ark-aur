@@ -1,6 +1,6 @@
 pkgname=ark-system-tweaks
 pkgver=1.0.0
-pkgrel=14
+pkgrel=15
 pkgdesc="System configuration and tweaks for Ark Linux"
 arch=('any')
 license=('MIT')
@@ -94,8 +94,7 @@ EOF
   install -Dm755 /dev/null "$pkgdir/usr/share/ark/grub-update.sh"
   cat > "$pkgdir/usr/share/ark/grub-update.sh" << 'GRUBEOF'
 #!/bin/bash
-set -e
-ROOT_UUID=$(findmnt -no UUID /)
+ROOT_UUID=$(findmnt -no UUID / 2>/dev/null || echo "")
 BOOT_UUID=$(findmnt -no UUID /boot 2>/dev/null || true)
 HAS_SEP_BOOT=false
 [ -n "$BOOT_UUID" ] && [ "$BOOT_UUID" != "$ROOT_UUID" ] && HAS_SEP_BOOT=true
@@ -127,12 +126,20 @@ for entry_file in "${sorted[@]}"; do
   initrd_rel=$(sed -n 's/^initrd //p' "$entry_file" | head -n1)
   boot_opts=$(sed -n 's/^options //p' "$entry_file" | head -n1)
   [ -z "$linux_rel" ] && continue
+  if [ ! -f "$linux_rel" ] && [ ! -f "/boot/${linux_rel#/boot/}" ]; then
+    echo "Warning: Skipping BLS entry $entry_file — kernel not found: $linux_rel"
+    continue
+  fi
+  if [ ! -f "$initrd_rel" ] && [ ! -f "/boot/${initrd_rel#/boot/}" ]; then
+    echo "Warning: Skipping BLS entry $entry_file — initrd not found: $initrd_rel"
+    continue
+  fi
   if [ "$HAS_SEP_BOOT" = true ]; then
-    linux_path="($boot_root)$linux_rel"
-    initrd_path="($boot_root)$initrd_rel"
+    linux_path='($boot_root)'"$linux_rel"
+    initrd_path='($boot_root)'"$initrd_rel"
   else
-    linux_path="($root)$linux_rel"
-    initrd_path="($root)$initrd_rel"
+    linux_path='($root)'"$linux_rel"
+    initrd_path='($root)'"$initrd_rel"
   fi
   label="$title"
   [ "$count" -gt 0 ] && label="$title (previous)"
