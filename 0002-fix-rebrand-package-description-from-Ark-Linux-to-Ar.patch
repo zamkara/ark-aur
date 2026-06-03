@@ -1,0 +1,112 @@
+From ef69189d7bbf44a1cdabe547d13b09847534951d Mon Sep 17 00:00:00 2001
+From: zamkara <zamkara@gnuweeb.org>
+Date: Mon, 1 Jun 2026 15:31:55 +0700
+Subject: [PATCH 2/2] fix: rebrand package description from 'Ark Linux' to
+ 'Arch Linux'
+
+---
+ ark-system-tweaks/.SRCINFO |  2 +-
+ ark-system-tweaks/PKGBUILD | 48 +++++++++++++++++++++++++++-----------
+ 2 files changed, 35 insertions(+), 15 deletions(-)
+
+diff --git a/ark-system-tweaks/.SRCINFO b/ark-system-tweaks/.SRCINFO
+index 7e6965e..3395c8b 100644
+--- a/ark-system-tweaks/.SRCINFO
++++ b/ark-system-tweaks/.SRCINFO
+@@ -1,5 +1,5 @@
+ pkgbase = ark-system-tweaks
+-	pkgdesc = System configuration and tweaks for Ark Linux
++	pkgdesc = System configuration and tweaks for Arch Linux
+ 	pkgver = 1.0.0
+ 	pkgrel = 6
+ 	arch = any
+diff --git a/ark-system-tweaks/PKGBUILD b/ark-system-tweaks/PKGBUILD
+index 276c2e0..d708bab 100644
+--- a/ark-system-tweaks/PKGBUILD
++++ b/ark-system-tweaks/PKGBUILD
+@@ -1,7 +1,7 @@
+ pkgname=ark-system-tweaks
+ pkgver=1.0.0
+ pkgrel=9
+-pkgdesc="System configuration and tweaks for Ark Linux"
++pkgdesc="System configuration and tweaks for Arch Linux"
+ arch=('any')
+ license=('MIT')
+ 
+@@ -22,7 +22,7 @@ Target = plymouth
+ Target = ark-system-tweaks
+ 
+ [Action]
+-Description = Applying Ark Linux system tweaks...
++Description = Applying Arch Linux system tweaks...
+ When = PostTransaction
+ Exec = /usr/bin/bash -c "sed -i 's/Theme=spinner/Theme=bgrt/' /etc/plymouth/plymouthd.conf 2>/dev/null || true; sed -i 's/VERSION_ID=.*/VERSION_ID=\"rolling\"/' /usr/lib/os-release 2>/dev/null || true"
+ EOF
+@@ -65,17 +65,45 @@ NeedsTargets
+ Exec = /usr/bin/bash -c 'USER_UID=\$(getent passwd | awk -F: "\$3 >= 1000 && \$3 < 65534 {print \$3; exit}"); [ -z "\$USER_UID" ] && USER_UID=1000; USER_NAME=\$(getent passwd "\$USER_UID" | cut -d: -f1); while read -r f; do HOME=/home/\$USER_NAME USER=\$USER_NAME XDG_RUNTIME_DIR=/run/user/\$USER_UID DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/\$USER_UID/bus distrobox-export -d --app "\$(basename "\$f" .desktop)" 2>/dev/null || true; done'
+ EOF
+ 
+-  # 7. Background Distrobox initialization
++  # 7. Distrobox initialization (helper script + systemd user service)
++  install -Dm755 /dev/null "$pkgdir/usr/lib/systemd/user/distrobox-init.sh"
++  cat <<'SCRIPTEOF' > "$pkgdir/usr/lib/systemd/user/distrobox-init.sh"
++#!/usr/bin/bash
++set -e
++
++if distrobox list --no-color 2>/dev/null | grep -qw "arch"; then
++    rm -f "$HOME/.local/share/applications/arch.desktop" 2>/dev/null || true
++    exit 0
++fi
++
++if ! podman image exists docker.io/archlinux:latest 2>/dev/null; then
++    gunzip -kf /usr/share/ark-distrobox/arch-container.tar.gz 2>/dev/null && \
++        podman load -i /usr/share/ark-distrobox/arch-container.tar 2>/dev/null || true
++fi
++
++distrobox create --name arch --image docker.io/archlinux:latest \
++    --init-hooks "mkdir -p /etc/pacman.d/hooks && \
++        cp /run/host/usr/share/ark-distrobox/hooks/*.hook /etc/pacman.d/hooks/" -Y
++
++rm -f "$HOME/.local/share/applications/arch.desktop" 2>/dev/null || true
++
++UUID=de305d54-75b4-431b-aba2-ebf0c43ef187
++gsettings set org.gnome.Ptyxis default-profile-uuid "$UUID" 2>/dev/null || true
++gsettings set org.gnome.Ptyxis profile-uuids "['$UUID']" 2>/dev/null || true
++gsettings set org.gnome.Ptyxis.Profile:/org/gnome/Ptyxis/Profiles/${UUID}/ default-container 'arch' 2>/dev/null || true
++gsettings set org.gnome.Ptyxis.Profile:/org/gnome/Ptyxis/Profiles/${UUID}/ label 'Arch Linux' 2>/dev/null || true
++SCRIPTEOF
++
+   install -Dm644 /dev/null "$pkgdir/usr/lib/systemd/user/distrobox-init.service"
+   cat <<'EOF' > "$pkgdir/usr/lib/systemd/user/distrobox-init.service"
+ [Unit]
+ Description=Initialize Default Distrobox
+-After=network-online.target
+-Wants=network-online.target
++After=graphical-session.target
++Wants=graphical-session.target
+ 
+ [Service]
+ Type=oneshot
+-ExecStart=/usr/bin/bash -c 'if distrobox list --no-color 2>/dev/null | grep -qw "arch"; then exit 0; fi; for i in {1..30}; do if ping -c 1 -W 2 archlinux.org >/dev/null 2>&1 || ping -c 1 -W 2 google.com >/dev/null 2>&1; then distrobox create --name arch --image docker.io/archlinux:latest --init-hooks "mkdir -p /etc/pacman.d/hooks && cp /run/host/usr/share/ark-distrobox/hooks/*.hook /etc/pacman.d/hooks/" -Y; exit 0; fi; sleep 10; done'
++ExecStart=/usr/lib/systemd/user/distrobox-init.sh
+ RemainAfterExit=yes
+ 
+ [Install]
+@@ -107,14 +135,6 @@ apps=['org.gnome.Settings.desktop', 'com.zamkara.alga.desktop', 'gnome-system-mo
+ name='Utilities'
+ translate=true
+ apps=['org.gnome.Ptyxis.desktop', 'com.ranfdev.DistroShelf.desktop', 'com.github.marhkb.Pods.desktop', 'org.gnome.DejaDup.desktop', 'org.gnome.FileRoller.desktop', 'org.gnome.fonts.desktop', 'org.gnome.Loupe.desktop', 'org.gnome.seahorse.Application.desktop']
+-
+-[org.gnome.Ptyxis]
+-default-profile-uuid='de305d54-75b4-431b-aba2-ebf0c43ef187'
+-profile-uuids=['de305d54-75b4-431b-aba2-ebf0c43ef187']
+-
+-[org.gnome.Ptyxis.Profile:/org/gnome/Ptyxis/Profiles/de305d54-75b4-431b-aba2-ebf0c43ef187/]
+-label='Arch Linux'
+-default-container='arch'
+ EOF
+   # 10. bootupd symlinks
+   install -d "$pkgdir/usr/bin"
+-- 
+2.54.0
+

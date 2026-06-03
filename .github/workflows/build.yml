@@ -172,6 +172,21 @@ jobs:
         run: gh release delete latest --cleanup-tag -y -R ${{ github.repository }} || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Trigger ark-image and ark.linux rebuilds
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::warning::No GH_PAT secret set — skipping auto-rebuild of ark-image / ark.linux"
+            echo "::warning::Create a classic PAT with repo scope, add as GH_PAT secret in repo settings"
+            exit 0
+          fi
+          echo "Triggering ark-image rebuild..."
+          gh workflow run build-payload.yml --repo zamkara/ark-image -f force=true
+          echo "Triggering ark.linux ISO rebuild..."
+          gh workflow run build-iso.yml --repo zamkara/ark.linux -f force=true
+          echo "Done — both downstream workflows triggered"
+
       - name: Create Nightly Release
         uses: softprops/action-gh-release@v2
         with:
