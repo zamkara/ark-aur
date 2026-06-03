@@ -1,6 +1,6 @@
 pkgname=ark-system-tweaks
 pkgver=1.0.0
-pkgrel=12
+pkgrel=13
 pkgdesc="System configuration and tweaks for Ark Linux"
 arch=('any')
 license=('MIT')
@@ -71,8 +71,8 @@ if [ -f "$PREF" ]; then
 fi
 printf "Rn you're runnin in the main shell -- limited, yeah, 'cos immutable sys security. Strongly rec'd: spin up a shell in isolated mode.\n\n"
 printf "Wanna switch to isolated from here on out? Y/n -- non-permanent, changeable anytime. "
-read -r REPLY
-case "$REPLY" in
+read -t 20 -r REPLY
+case "${REPLY:-n}" in
     [Nn]*)
         mkdir -p "$HOME/.config/ark"
         echo "no" > "$PREF"
@@ -95,6 +95,7 @@ Operation = Install
 Operation = Upgrade
 Type = Package
 Target = bash
+Target = ark-system-tweaks
 
 [Action]
 Description = Adding Ark container entry hook to bash.bashrc...
@@ -227,4 +228,58 @@ EOF
     fi
   done
   rm -f /tmp/ark-locale-build.gen
+
+  # 14. Pacman wrapper (isolated system redirect to distrobox)
+  mkdir -p "$pkgdir/usr/local/bin"
+  cat > "$pkgdir/usr/local/bin/pacman" << 'PACMANEOF'
+#!/bin/bash
+set -e
+
+[ -n "$PACMAN_ALLOW_WRITE" ] && exec /usr/bin/pacman "$@"
+
+touch /usr/.ark-rw-check 2>/dev/null && {
+  rm -f /usr/.ark-rw-check
+  exec /usr/bin/pacman "$@"
+}
+
+for arg in "$@"; do
+  case "$arg" in
+    -V|--version|-h|--help)
+      exec /usr/bin/pacman "$@" ;;
+    -Q|--query|-Q[ailopqsu]*|-Si|-Ss|-Sp|-Sg)
+      exec /usr/bin/pacman "$@" ;;
+  esac
+done
+
+if [ ! -t 0 ]; then
+  echo "  Can't prompt — non-interactive session."
+  echo "  Use 'distrobox enter arch', or export PACMAN_ALLOW_WRITE=1 to bypass."
+  exit 1
+fi
+
+echo ""
+echo "  Rn you're in isolated mode — limited, 'cos system image thing."
+printf "  Wanna run '%s' inside Arch container instead? — Y/n " "$*"
+read -r REPLY </dev/tty || true
+
+case "$REPLY" in
+  [Nn]*)
+    echo "  K. Skip. You can always 'distrobox enter arch' later — non-permanent, changeable anytime."
+    exit 0
+    ;;
+  *)
+    if ! command -v distrobox &>/dev/null; then
+      echo "  distrobox not found — can't spin up container."
+      echo "  Install it first, or export PACMAN_ALLOW_WRITE=1 to bypass."
+      exit 1
+    fi
+    if ! distrobox list --no-color 2>/dev/null | grep -qw "arch"; then
+      echo "  Container not ready — gimme a sec to set it up..."
+      distrobox create --name arch --image docker.io/archlinux:latest -Y
+    fi
+    exec distrobox enter arch -- /usr/bin/pacman "$@"
+    ;;
+esac
+PACMANEOF
+  chmod 755 "$pkgdir/usr/local/bin/pacman"
 }
