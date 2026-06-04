@@ -133,7 +133,7 @@ jobs:
               gnome-keyring gnome-session gnome-settings-daemon nautilus xdg-desktop-portal-gnome xdg-user-dirs-gtk \
               gnome-backgrounds gnome-console gdm plymouth gnome-software flatpak gnome-initial-setup util-linux openssl \
               efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo btrfs-progs podman composefs distrobox ibus \
-              iso-codes shadow sudo git nvidia-open nvidia-open-dkms nvidia-utils nvidia-settings dkms
+              iso-codes shadow sudo git nano nvidia-open nvidia-open-dkms nvidia-utils nvidia-settings dkms
           "
           # Compress the cache folder
           tar -czf pacman-cache.tar.gz -C pacman-cache .

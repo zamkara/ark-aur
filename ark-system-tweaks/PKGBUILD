@@ -1,6 +1,6 @@
 pkgname=ark-system-tweaks
 pkgver=1.0.0
-pkgrel=16
+pkgrel=18
 pkgdesc="System configuration and tweaks for Ark Linux"
 arch=('any')
 license=('MIT')
@@ -51,130 +51,7 @@ polkit.addRule(function(action, subject) {
 });
 EOF
 
-  # 7. Arch container entry
-  install -Dm755 /dev/null "$pkgdir/usr/share/ark/enter-arch.sh"
-  cat <<'EOF' > "$pkgdir/usr/share/ark/enter-arch.sh"
-#!/bin/sh
-
-ATTEMPT=1
-while [ "$ATTEMPT" -le 3 ]; do
-  if ping -c 1 -W 5 hub.docker.com >/dev/null 2>&1; then
-    break
-  fi
-  if [ "$ATTEMPT" -eq 3 ]; then
-    echo "No internet. Come back when connected."
-    sleep 5
-    exit 1
-  fi
-  echo "No internet. Retrying ($((ATTEMPT + 1))/3)..."
-  sleep 3
-  ATTEMPT=$((ATTEMPT + 1))
-done
-
-if ! distrobox list --no-color 2>/dev/null | grep -qw "arch"; then
-  distrobox create --name arch --image docker.io/archlinux:latest -Y
-fi
-
-distrobox enter arch -- bash -c '
-  if [ ! -x /usr/local/bin/distrobox ]; then
-    sudo tee /usr/local/bin/distrobox > /dev/null << "DEOF"
-#!/bin/bash
-exec distrobox-host-exec distrobox "$@"
-DEOF
-    sudo chmod +x /usr/local/bin/distrobox
-  fi
-' || true
-
-rm -f "$HOME/.local/share/applications/arch.desktop"
-
-exec distrobox enter arch --additional-flags "--workdir $PWD"
-EOF
-
-  # 8. GRUB update script (regenerate grub.cfg from BLS entries)
-  install -Dm755 /dev/null "$pkgdir/usr/share/ark/grub-update.sh"
-  cat > "$pkgdir/usr/share/ark/grub-update.sh" << 'GRUBEOF'
-#!/bin/bash
-ROOT_UUID=$(findmnt -no UUID / 2>/dev/null || echo "")
-BOOT_UUID=$(findmnt -no UUID /boot 2>/dev/null || true)
-HAS_SEP_BOOT=false
-[ -n "$BOOT_UUID" ] && [ "$BOOT_UUID" != "$ROOT_UUID" ] && HAS_SEP_BOOT=true
-GRUB_CFG="/boot/grub/grub.cfg"
-mkdir -p "$(dirname "$GRUB_CFG")"
-printf "set default=0\nset timeout=5\n\n" > "$GRUB_CFG"
-entries=()
-for f in /boot/loader/entries/ostree-*.conf; do
-  [ -f "$f" ] && entries+=("$f")
-done
-if [ ${#entries[@]} -eq 0 ]; then
-  {
-    echo 'menuentry "Arch Linux" {'
-    echo "    search --no-floppy --fs-uuid $ROOT_UUID --set=root"
-    echo "    linux /boot/vmlinuz-linux root=UUID=$ROOT_UUID rw quiet splash loglevel=3"
-    echo "    initrd /boot/initramfs-linux.img"
-    echo '}'
-  } >> "$GRUB_CFG"
-  echo "Warning: No BLS entries found, generated fallback grub.cfg"
-  exit 0
-fi
-IFS=$'\n'
-sorted=($(sort -t- -k2 -rn <<<"${entries[*]}"))
-unset IFS
-count=0
-for entry_file in "${sorted[@]}"; do
-  title=$(sed -n 's/^title //p' "$entry_file" | head -n1)
-  linux_rel=$(sed -n 's/^linux //p' "$entry_file" | head -n1)
-  initrd_rel=$(sed -n 's/^initrd //p' "$entry_file" | head -n1)
-  boot_opts=$(sed -n 's/^options //p' "$entry_file" | head -n1)
-  [ -z "$linux_rel" ] && continue
-  if [ ! -f "$linux_rel" ] && [ ! -f "/boot/${linux_rel#/boot/}" ]; then
-    echo "Warning: Skipping BLS entry $entry_file — kernel not found: $linux_rel"
-    continue
-  fi
-  if [ ! -f "$initrd_rel" ] && [ ! -f "/boot/${initrd_rel#/boot/}" ]; then
-    echo "Warning: Skipping BLS entry $entry_file — initrd not found: $initrd_rel"
-    continue
-  fi
-  if [ "$HAS_SEP_BOOT" = true ]; then
-    linux_path='($boot_root)'"$linux_rel"
-    initrd_path='($boot_root)'"$initrd_rel"
-  else
-    linux_path='($root)'"$linux_rel"
-    initrd_path='($root)'"$initrd_rel"
-  fi
-  label="$title"
-  [ "$count" -gt 0 ] && label="$title (previous)"
-  {
-    echo 'menuentry "'"$label"'" {'
-    echo "    search --no-floppy --fs-uuid $ROOT_UUID --set=root"
-    if [ "$HAS_SEP_BOOT" = true ]; then
-      echo "    search --no-floppy --fs-uuid $BOOT_UUID --set=boot_root"
-    fi
-    echo "    linux $linux_path $boot_opts"
-    echo "    initrd $initrd_path"
-    echo '}'
-    echo ''
-  } >> "$GRUB_CFG"
-  count=$((count + 1))
-done
-echo "Generated $count GRUB entries from OSTree BLS entries"
-GRUBEOF
-
-  # 9. GRUB update systemd service
-  install -Dm644 /dev/null "$pkgdir/etc/systemd/system/ark-grub-update.service"
-  cat <<'SVCEOF' > "$pkgdir/etc/systemd/system/ark-grub-update.service"
-[Unit]
-Description=Ark GRUB boot entry regeneration from OSTree deployments
-After=local-fs.target
-
-[Service]
-Type=oneshot
-ExecStart=/usr/share/ark/grub-update.sh
-
-[Install]
-WantedBy=multi-user.target
-SVCEOF
-
-  # 10. GSchema override (theme + app folders)
+  # 7. GSchema override (theme + app folders)
   install -Dm644 /dev/null "$pkgdir/usr/share/glib-2.0/schemas/99-ark-theme.gschema.override"
   cat <<'EOF' > "$pkgdir/usr/share/glib-2.0/schemas/99-ark-theme.gschema.override"
 [org.gnome.desktop.interface]
@@ -198,11 +75,11 @@ name='Utilities'
 translate=true
 apps=['org.gnome.Console.desktop', 'com.ranfdev.DistroShelf.desktop', 'com.github.marhkb.Pods.desktop', 'org.gnome.DejaDup.desktop', 'org.gnome.FileRoller.desktop', 'org.gnome.fonts.desktop', 'org.gnome.Loupe.desktop', 'org.gnome.seahorse.Application.desktop']
 EOF
-  # 11. bootupd symlinks
+  # 8. bootupd symlinks
   install -d "$pkgdir/usr/bin"
   ln -s /usr/libexec/bootupd "$pkgdir/usr/bin/bootupd"
 
-  # 12. Compile and package all UTF-8 locales
+  # 9. Compile and package all UTF-8 locales
   # NOTE: do NOT ship /etc/locale.gen — it is owned by glibc and would conflict.
   # Use a temp copy for compilation only; ship only the compiled locale-archive.
   mkdir -p "$pkgdir/usr/lib/locale"
