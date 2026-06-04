@@ -1,6 +1,6 @@
 pkgname=ark-system-tweaks
 pkgver=1.0.0
-pkgrel=15
+pkgrel=16
 pkgdesc="System configuration and tweaks for Ark Linux"
 arch=('any')
 license=('MIT')
@@ -76,14 +76,14 @@ if ! distrobox list --no-color 2>/dev/null | grep -qw "arch"; then
 fi
 
 distrobox enter arch -- bash -c '
-  if [ ! -f /usr/local/bin/distrobox ]; then
-    cat > /usr/local/bin/distrobox << "DEOF"
+  if [ ! -x /usr/local/bin/distrobox ]; then
+    sudo tee /usr/local/bin/distrobox > /dev/null << "DEOF"
 #!/bin/bash
 exec distrobox-host-exec distrobox "$@"
 DEOF
-    chmod +x /usr/local/bin/distrobox
+    sudo chmod +x /usr/local/bin/distrobox
   fi
-' 2>/dev/null || true
+' || true
 
 rm -f "$HOME/.local/share/applications/arch.desktop"
 
@@ -220,26 +220,4 @@ EOF
   done
   rm -f /tmp/ark-locale-build.gen
 
-  # 13. Console desktop override (redirect to container entry)
-  install -Dm644 /dev/null "$pkgdir/usr/local/share/applications/org.gnome.Console.desktop"
-  cat <<'EOF' > "$pkgdir/usr/local/share/applications/org.gnome.Console.desktop"
-[Desktop Entry]
-Name=Terminal
-Exec=kgx --set-shell=/usr/share/ark/enter-arch.sh
-Icon=org.gnome.Console
-Terminal=false
-Type=Application
-Categories=System;TerminalEmulator;Utility;GTK;GNOME;
-StartupNotify=true
-DBusActivatable=false
-Keywords=command;prompt;cmd;commandline;run;shell;terminal;kgx;
-
-[Desktop Action new-window]
-Exec=kgx --set-shell=/usr/share/ark/enter-arch.sh
-Name=New Window
-
-[Desktop Action new-tab]
-Exec=kgx --set-shell=/usr/share/ark/enter-arch.sh
-Name=New Tab
-EOF
 }
