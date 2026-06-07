@@ -1,6 +1,6 @@
 pkgname=ark-system-tweaks
 pkgver=1.0.0
-pkgrel=18
+pkgrel=19
 pkgdesc="System configuration and tweaks for Ark Linux"
 arch=('any')
 license=('MIT')
@@ -34,6 +34,10 @@ EOF
   # 4. Silent boot kargs
   install -Dm644 /dev/null "$pkgdir/usr/lib/bootc/kargs.d/01-silent-boot.toml"
   echo 'kargs = ["quiet", "splash", "loglevel=3", "rd.udev.log_priority=3", "vt.global_cursor_default=0", "boot.shell_on_fail=1"]' > "$pkgdir/usr/lib/bootc/kargs.d/01-silent-boot.toml"
+
+  # 4b. Serial console kargs (QEMU/virt console)
+  install -Dm644 /dev/null "$pkgdir/usr/lib/bootc/kargs.d/02-console-serial.toml"
+  echo 'kargs = ["console=ttyS0,115200"]' > "$pkgdir/usr/lib/bootc/kargs.d/02-console-serial.toml"
 
   # 5. Sudoers wheel group
   install -Dm644 /dev/null "$pkgdir/etc/sudoers.d/10-ark-wheel"
