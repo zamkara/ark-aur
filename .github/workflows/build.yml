@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        package: [bootupd, bootc, morewaita-icon-theme, pods, distroshelf]
+        package: [bootupd, bootc, morewaita-icon-theme, pods, distroshelf, starship, fastfetch, scrcpy, android-tools, nix, distrobox, plymouth, zram-generator, github-cli, gnome-backgrounds]
     steps:
       - uses: actions/checkout@v4
       - name: Get AUR Version
@@ -129,10 +129,10 @@ jobs:
             pacman -Sy
             yes | pacman -Syw --noconfirm --cachedir /var/cache/pacman/pkg --root /tmp/empty-root \
               base glibc linux linux-zen linux-lts linux-hardened linux-headers linux-zen-headers linux-lts-headers linux-hardened-headers \
-              linux-firmware networkmanager mkinitcpio zram-generator gnome-shell gnome-control-center gnome-disk-utility \
+              linux-firmware networkmanager mkinitcpio gnome-shell gnome-control-center gnome-disk-utility \
               gnome-keyring gnome-session gnome-settings-daemon nautilus xdg-desktop-portal-gnome xdg-user-dirs-gtk \
-              gnome-backgrounds gnome-console gdm plymouth gnome-software flatpak gnome-initial-setup util-linux openssl \
-              efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo btrfs-progs podman composefs distrobox ibus \
+              gnome-console gdm gnome-software flatpak gnome-initial-setup util-linux openssl \
+              efibootmgr dosfstools e2fsprogs xfsprogs ostree skopeo btrfs-progs podman composefs ibus \
               iso-codes shadow sudo git nano nvidia-open nvidia-open-dkms nvidia-utils nvidia-settings dkms
           "
           # Compress the cache folder
