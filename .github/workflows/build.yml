@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        package: [bootupd, bootc, morewaita-icon-theme, pods, distroshelf, starship, fastfetch, scrcpy, android-tools, nix, distrobox, plymouth, zram-generator, github-cli, gnome-backgrounds]
+        package: [bootupd, bootc, morewaita-icon-theme, pods, distroshelf, starship, fastfetch, scrcpy, android-tools, nix, distrobox, plymouth, zram-generator, github-cli, gnome-backgrounds, base-devel]
     steps:
       - uses: actions/checkout@v4
       - name: Get AUR Version
@@ -53,18 +53,30 @@ jobs:
         run: |
           mkdir -p aur-out
           sudo podman run --rm --privileged -v $(pwd):/work -v $(pwd)/pacman-aur-cache:/var/cache/pacman/pkg -v $(pwd)/cargo-aur-cache-${{ matrix.package }}:/home/builduser/.cargo -w /work docker.io/archlinux:latest bash -c "
-            pacman -Syu --noconfirm base-devel git sudo rust
+            pacman -Syu --noconfirm base-devel git sudo rust wget
             useradd -m builduser || true
             chown -R builduser:builduser /home/builduser
             passwd -d builduser
             echo 'builduser ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builduser
             
-            sudo -u builduser bash -c '
-              cd ~
-              git clone https://aur.archlinux.org/${{ matrix.package }}.git
-              cd ${{ matrix.package }} && makepkg -s --noconfirm
-            '
-            cp /home/builduser/${{ matrix.package }}/*.pkg.tar.zst /work/aur-out/
+            # Cek apakah paket ada di repo resmi
+            if pacman -Si \"${{ matrix.package }}\" >/dev/null 2>&1; then
+              echo 'Downloading pre-compiled official package and its dependencies...'
+              mkdir -p /tmp/empty-db
+              pacman -Sy --dbpath /tmp/empty-db >/dev/null 2>&1 || true
+              URLS=\$(pacman -Sp --noconfirm --dbpath /tmp/empty-db \"${{ matrix.package }}\" | grep -E '\.pkg\.tar\.(zst|xz)')
+              for u in \$URLS; do
+                wget -q -P /work/aur-out/ \"\$u\"
+              done
+            else
+              echo 'Cloning and compiling AUR package...'
+              sudo -u builduser bash -c '
+                cd ~
+                git clone https://aur.archlinux.org/${{ matrix.package }}.git
+                cd ${{ matrix.package }} && makepkg -s --noconfirm
+              '
+              cp /home/builduser/${{ matrix.package }}/*.pkg.tar.zst /work/aur-out/
+            fi
           "
           sudo chown -R $USER:$USER aur-out/ pacman-aur-cache/ cargo-aur-cache-${{ matrix.package }}/
       - name: Upload AUR package Artifact
