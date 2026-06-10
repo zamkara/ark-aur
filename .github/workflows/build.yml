@@ -77,6 +77,11 @@ jobs:
               '
               cp /home/builduser/${{ matrix.package }}/*.pkg.tar.zst /work/aur-out/
             fi
+
+            # Ganti semua karakter colon (:) pada nama file di aur-out/ agar kompatibel dengan upload-artifact
+            for f in /work/aur-out/*:*; do
+              [ -e \"\$f\" ] && mv \"\$f\" \"\$(echo \"\$f\" | tr ':' '_')\" || true
+            done
           "
           sudo chown -R $USER:$USER aur-out/ pacman-aur-cache/ cargo-aur-cache-${{ matrix.package }}/
       - name: Upload AUR package Artifact
