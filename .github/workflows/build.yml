@@ -67,7 +67,7 @@ jobs:
                 pacman -Sy --dbpath /tmp/empty-db >/dev/null 2>&1 || true
                 URLS=\$(pacman -Sp --noconfirm --dbpath /tmp/empty-db \"${{ matrix.package }}\" | grep -E '\.pkg\.tar\.(zst|xz)')
               else
-                URLS=\$(pacman -Sp --noconfirm \"${{ matrix.package }}\" | grep -E '\.pkg\.tar\.(zst|xz)' | head -n1)
+                URLS=\$(pacman -Spd --noconfirm \"${{ matrix.package }}\" | grep -E '\.pkg\.tar\.(zst|xz)')
               fi
               for u in \$URLS; do
                 wget -q -P /work/aur-out/ \"\$u\"
