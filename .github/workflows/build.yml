@@ -28,7 +28,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: aur-out/
-          key: ${{ runner.os }}-aur-${{ steps.aur-version.outputs.key }}
+          key: ${{ runner.os }}-aur-${{ matrix.package }}-${{ steps.aur-version.outputs.key || 'official' }}
       - name: Cache Pacman AUR Build
         if: steps.cache-aur.outputs.cache-hit != 'true'
         uses: actions/cache@v4
@@ -41,7 +41,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: cargo-aur-cache-${{ matrix.package }}/
-          key: ${{ runner.os }}-cargo-aur-${{ matrix.package }}-${{ steps.aur-version.outputs.key }}
+          key: ${{ runner.os }}-cargo-aur-${{ matrix.package }}-${{ steps.aur-version.outputs.key || 'official' }}
           restore-keys: |
             ${{ runner.os }}-cargo-aur-${{ matrix.package }}-
       - name: Prepare Cache Dir
@@ -62,9 +62,13 @@ jobs:
             # Cek apakah paket ada di repo resmi
             if pacman -Si \"${{ matrix.package }}\" >/dev/null 2>&1; then
               echo 'Downloading pre-compiled official package and its dependencies...'
-              mkdir -p /tmp/empty-db
-              pacman -Sy --dbpath /tmp/empty-db >/dev/null 2>&1 || true
-              URLS=\$(pacman -Sp --noconfirm --dbpath /tmp/empty-db \"${{ matrix.package }}\" | grep -E '\.pkg\.tar\.(zst|xz)')
+              if [ \"${{ matrix.package }}\" = \"base-devel\" ]; then
+                mkdir -p /tmp/empty-db
+                pacman -Sy --dbpath /tmp/empty-db >/dev/null 2>&1 || true
+                URLS=\$(pacman -Sp --noconfirm --dbpath /tmp/empty-db \"${{ matrix.package }}\" | grep -E '\.pkg\.tar\.(zst|xz)')
+              else
+                URLS=\$(pacman -Sp --noconfirm \"${{ matrix.package }}\" | grep -E '\.pkg\.tar\.(zst|xz)' | head -n1)
+              fi
               for u in \$URLS; do
                 wget -q -P /work/aur-out/ \"\$u\"
               done
