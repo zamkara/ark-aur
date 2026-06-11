@@ -28,7 +28,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: aur-out/
-          key: ${{ runner.os }}-aur-${{ matrix.package }}-${{ steps.aur-version.outputs.key || 'official' }}
+          key: ${{ runner.os }}-aur-v2-${{ matrix.package }}-${{ steps.aur-version.outputs.key || 'official' }}
       - name: Cache Pacman AUR Build
         if: steps.cache-aur.outputs.cache-hit != 'true'
         uses: actions/cache@v4
@@ -218,5 +218,5 @@ jobs:
           files: |
             aur-packages/*.pkg.tar.zst
             pacman-cache/pacman-cache.tar.gz.part-*
-          prerelease: true
+          prerelease: false
           make_latest: true
