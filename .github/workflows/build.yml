@@ -209,14 +209,16 @@ jobs:
           echo "Done — both downstream workflows triggered"
 
       - name: Create Nightly Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest
-          name: "Latest Pre-built AUR Packages"
-          body: |
-            Automated build for `bootc`, `bootupd`, and offline package cache.
-          files: |
-            aur-packages/*.pkg.tar.zst
-            pacman-cache/pacman-cache.tar.gz.part-*
-          prerelease: false
-          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Creating release..."
+          gh release create latest --title "Latest Pre-built AUR Packages" --notes "Automated build for \`bootc\`, \`bootupd\`, and offline package cache." || echo "Release already exists or failed to create"
+          echo "Uploading packages..."
+          for f in aur-packages/*.pkg.tar.zst pacman-cache/pacman-cache.tar.gz.part-*; do
+            if [ -f "$f" ]; then
+              echo "Uploading $f..."
+              gh release upload latest "$f" --clobber
+              sleep 0.8
+            fi
+          done
