@@ -53,7 +53,7 @@ jobs:
         run: |
           mkdir -p aur-out
           sudo podman run --rm --privileged -v $(pwd):/work -v $(pwd)/pacman-aur-cache:/var/cache/pacman/pkg -v $(pwd)/cargo-aur-cache-${{ matrix.package }}:/home/builduser/.cargo -w /work ghcr.io/archlinux/archlinux:latest bash -c "
-            pacman -Syu --noconfirm base-devel git sudo rust wget
+            pacman -Syu --noconfirm base-devel git sudo rust wget blueprint-compiler
             useradd -m builduser || true
             chown -R builduser:builduser /home/builduser
             passwd -d builduser
