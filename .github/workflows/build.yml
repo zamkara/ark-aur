@@ -213,12 +213,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Creating release..."
-          gh release create latest --title "Latest Pre-built AUR Packages" --notes "Automated build for \`bootc\`, \`bootupd\`, and offline package cache." || echo "Release already exists or failed to create"
+          gh release create latest --title "Latest Pre-built AUR Packages" --notes "Automated build for \`bootc\`, \`bootupd\`, and offline package cache." -R ${{ github.repository }} || echo "Release already exists or failed to create"
           echo "Uploading packages..."
           for f in aur-packages/*.pkg.tar.zst pacman-cache/pacman-cache.tar.gz.part-*; do
             if [ -f "$f" ]; then
               echo "Uploading $f..."
-              gh release upload latest "$f" --clobber
+              gh release upload latest "$f" --clobber -R ${{ github.repository }}
               sleep 0.8
             fi
           done
