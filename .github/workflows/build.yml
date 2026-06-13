@@ -74,13 +74,13 @@ jobs:
               done
             else
               echo 'Cloning and compiling AUR package...'
-              # Buat dummy .gitconfig di root dan user builduser guna mencegah kegagalan libgit2/cargo di fakeroot
-              touch /root/.gitconfig && chmod 644 /root/.gitconfig
+              # Cegah kegagalan libgit2/cargo di fakeroot: /root harus traversable
+              touch /root/.gitconfig && chmod 644 /root/.gitconfig && chmod 755 /root
               sudo -u builduser touch /home/builduser/.gitconfig
               sudo -u builduser bash -c '
                 cd ~
                 git clone https://aur.archlinux.org/${{ matrix.package }}.git
-                cd ${{ matrix.package }} && export GIT_CONFIG_GLOBAL=/dev/null && export GIT_CONFIG_SYSTEM=/dev/null && makepkg -s --noconfirm
+                cd ${{ matrix.package }} && export GIT_CONFIG_NOSYSTEM=1 HOME=/home/builduser && makepkg -s --noconfirm
               '
               cp /home/builduser/${{ matrix.package }}/*.pkg.tar.zst /work/aur-out/ || cp /home/builduser/*/*.pkg.tar.zst /work/aur-out/
             fi
