@@ -130,25 +130,23 @@ jobs:
             passwd -d builduser
             echo 'builduser ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builduser
 
-            # Resolve package source dir (local packages live under .github/)
-            PKG_DIR="/work/.github/${{ matrix.package }}"
-            chown -R builduser:builduser "$PKG_DIR"
+            chown -R builduser:builduser /work/.github/${{ matrix.package }}
 
             # For helium-browser: fetch latest version and patch PKGBUILD
             if [ "${{ matrix.package }}" = "helium-browser" ]; then
               pacman -S --noconfirm curl jq gnupg
-              LATEST=$(curl -s https://api.github.com/repos/imputnet/helium-linux/releases/latest | jq -r '.tag_name')
-              sed -i "s/pkgver=PLACEHOLDER/pkgver=$LATEST/" "$PKG_DIR/PKGBUILD"
+              LATEST=\$(curl -s https://api.github.com/repos/imputnet/helium-linux/releases/latest | jq -r '.tag_name')
+              sed -i "s/pkgver=PLACEHOLDER/pkgver=\$LATEST/" /work/.github/${{ matrix.package }}/PKGBUILD
               # recv-keys as builduser so makepkg can verify the signature
               sudo -u builduser gpg --keyserver hkps://keys.openpgp.org --recv-keys 19F5CBAF94202A3FACB14A9F6624A9BA04B4E793 || \
               sudo -u builduser gpg --keyserver keyserver.ubuntu.com --recv-keys 19F5CBAF94202A3FACB14A9F6624A9BA04B4E793
             fi
 
             sudo -u builduser bash -c '
-              cd '"$PKG_DIR"'
+              cd /work/.github/${{ matrix.package }}
               makepkg -s --noconfirm
             '
-            cp "$PKG_DIR"/*.pkg.tar.zst /work/aur-out/
+            cp /work/.github/${{ matrix.package }}/*.pkg.tar.zst /work/aur-out/
           "
           sudo chown -R $USER:$USER aur-out/ pacman-local-cache/ cargo-local-cache-${{ matrix.package }}/
       - name: Upload Local package Artifact
