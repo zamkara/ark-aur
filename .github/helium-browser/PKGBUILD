@@ -1,0 +1,24 @@
+pkgname=helium-browser
+pkgver=PLACEHOLDER
+pkgrel=1
+pkgdesc="Helium browser — de-Googled Chromium fork"
+arch=('x86_64')
+url="https://github.com/imputnet/helium-linux"
+license=('custom')
+depends=()
+validpgpkeys=('19F5CBAF94202A3FACB14A9F6624A9BA04B4E793')
+source=(
+    "helium-${pkgver}-x86_64_linux.tar.xz::https://github.com/imputnet/helium-linux/releases/download/${pkgver}/helium-${pkgver}-x86_64_linux.tar.xz"
+    "helium-${pkgver}-x86_64_linux.tar.xz.asc::https://github.com/imputnet/helium-linux/releases/download/${pkgver}/helium-${pkgver}-x86_64_linux.tar.xz.asc"
+)
+sha256sums=('SKIP' 'SKIP')
+
+package() {
+    install -dm755 "$pkgdir/opt/helium"
+    cp -r "$srcdir/helium-${pkgver}-x86_64_linux/." "$pkgdir/opt/helium/"
+    ln -sf /opt/helium/helium-wrapper "$pkgdir/usr/local/bin/helium"
+    install -dm755 "$pkgdir/usr/share/applications"
+    cp "$srcdir/helium-${pkgver}-x86_64_linux/helium.desktop" "$pkgdir/usr/share/applications/"
+    install -Dm644 "$pkgdir/opt/helium/product_logo_256.png" \
+        "$pkgdir/usr/share/icons/hicolor/256x256/apps/helium.png"
+}
