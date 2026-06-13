@@ -6,7 +6,7 @@ arch=('x86_64')
 url="https://github.com/imputnet/helium-linux"
 license=('custom')
 depends=()
-validpgpkeys=('19F5CBAF94202A3FACB14A9F6624A9BA04B4E793')
+validpgpkeys=('BE677C1989D35EAB2C5F26C9351601AD01D6378E')
 source=(
     "helium-${pkgver}-x86_64_linux.tar.xz::https://github.com/imputnet/helium-linux/releases/download/${pkgver}/helium-${pkgver}-x86_64_linux.tar.xz"
     "helium-${pkgver}-x86_64_linux.tar.xz.asc::https://github.com/imputnet/helium-linux/releases/download/${pkgver}/helium-${pkgver}-x86_64_linux.tar.xz.asc"

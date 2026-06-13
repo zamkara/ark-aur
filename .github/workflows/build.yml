@@ -138,8 +138,8 @@ jobs:
               LATEST=\$(curl -s https://api.github.com/repos/imputnet/helium-linux/releases/latest | jq -r '.tag_name')
               sed -i "s/pkgver=PLACEHOLDER/pkgver=\$LATEST/" /work/.github/${{ matrix.package }}/PKGBUILD
               # recv-keys as builduser so makepkg can verify the signature
-              sudo -u builduser gpg --keyserver hkps://keys.openpgp.org --recv-keys 19F5CBAF94202A3FACB14A9F6624A9BA04B4E793 || \
-              sudo -u builduser gpg --keyserver keyserver.ubuntu.com --recv-keys 19F5CBAF94202A3FACB14A9F6624A9BA04B4E793
+              sudo -u builduser gpg --keyserver hkps://keys.openpgp.org --recv-keys BE677C1989D35EAB2C5F26C9351601AD01D6378E || \
+              sudo -u builduser gpg --keyserver keyserver.ubuntu.com --recv-keys BE677C1989D35EAB2C5F26C9351601AD01D6378E
             fi
 
             sudo -u builduser bash -c '
