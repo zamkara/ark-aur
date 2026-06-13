@@ -82,12 +82,12 @@ jobs:
                 git clone https://aur.archlinux.org/${{ matrix.package }}.git
                 cd ${{ matrix.package }} && export GIT_CONFIG_GLOBAL=/dev/null && export GIT_CONFIG_SYSTEM=/dev/null && makepkg -s --noconfirm
               '
-              cp /home/builduser/${{ matrix.package }}/*.pkg.tar.zst /work/aur-out/
+              cp /home/builduser/${{ matrix.package }}/*.pkg.tar.zst /work/aur-out/ || cp /home/builduser/*/*.pkg.tar.zst /work/aur-out/
             fi
 
             # Ganti semua karakter colon (:) pada nama file di aur-out/ agar kompatibel dengan upload-artifact
             for f in /work/aur-out/*:*; do
-              [ -e \"\$f\" ] && mv \"\$f\" \"\$(echo \"\$f\" | tr ':' '_')\" || true
+              [ -e "$f" ] && mv "$f" "$(echo "$f" | tr ':' '_')" || true
             done
           "
           sudo chown -R $USER:$USER aur-out/ pacman-aur-cache/ cargo-aur-cache-${{ matrix.package }}/
