@@ -28,7 +28,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: aur-out/
-          key: ${{ runner.os }}-aur-v6-${{ matrix.package }}-${{ steps.aur-version.outputs.key || 'official' }}
+          key: ${{ runner.os }}-aur-v7-${{ matrix.package }}-${{ steps.aur-version.outputs.key || 'official' }}
       - name: Cache Pacman AUR Build
         if: steps.cache-aur.outputs.cache-hit != 'true'
         uses: actions/cache@v4
@@ -75,7 +75,7 @@ jobs:
             else
               echo 'Cloning and compiling AUR package...'
               # Buat dummy .gitconfig di root dan user builduser guna mencegah kegagalan libgit2/cargo di fakeroot
-              touch /root/.gitconfig
+              touch /root/.gitconfig && chmod 644 /root/.gitconfig
               sudo -u builduser touch /home/builduser/.gitconfig
               sudo -u builduser bash -c '
                 cd ~
