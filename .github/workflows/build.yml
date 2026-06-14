@@ -206,7 +206,7 @@ jobs:
           name: pacman-cache-tarball
           path: pacman-cache/
       - name: Delete old release
-        run: gh release delete nightly --cleanup-tag -y -R ${{ github.repository }} || true
+        run: gh release delete latest --cleanup-tag -y -R ${{ github.repository }} || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -225,17 +225,17 @@ jobs:
           gh workflow run build-iso.yml --repo zamkara/ark.linux -f force=true
           echo "Done — both downstream workflows triggered"
 
-      - name: Create Nightly Release
+      - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Creating release..."
-          gh release create nightly --title "Latest Pre-built AUR Packages" --notes "Automated build for \`bootc\`, \`bootupd\`, and offline package cache." --latest -R ${{ github.repository }}
+          gh release create latest --title "Latest Pre-built AUR Packages" --notes "Automated build for \`bootc\`, \`bootupd\`, and offline package cache." --latest -R ${{ github.repository }}
           echo "Uploading packages..."
           for f in aur-packages/*.pkg.tar.zst pacman-cache/pacman-cache.tar.gz.part-*; do
             if [ -f "$f" ]; then
               echo "Uploading $f..."
-              gh release upload nightly "$f" --clobber -R ${{ github.repository }}
+              gh release upload latest "$f" --clobber -R ${{ github.repository }}
               sleep 0.8
             fi
           done
