@@ -82,7 +82,10 @@ jobs:
               sudo -u builduser bash -c '
                 cd ~
                 git clone https://aur.archlinux.org/${{ matrix.package }}.git
-                cd ${{ matrix.package }} && export GIT_CONFIG_NOSYSTEM=1 HOME=/home/builduser && makepkg -s --noconfirm
+                cd ${{ matrix.package }}
+                # Import PGP keys required by this PKGBUILD
+                grep -oP "(?<=validpgpkeys=\()[^)]*" PKGBUILD | grep -oP "[0-9A-F]{40}" | xargs -r gpg --keyserver hkps://keyserver.ubuntu.com --recv-keys 2>/dev/null || true
+                export GIT_CONFIG_NOSYSTEM=1 HOME=/home/builduser && makepkg -s --noconfirm
               '
               cp /home/builduser/${{ matrix.package }}/*.pkg.tar.zst /work/aur-out/ || cp /home/builduser/*/*.pkg.tar.zst /work/aur-out/
             fi
