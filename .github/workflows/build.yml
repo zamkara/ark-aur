@@ -239,3 +239,5 @@ jobs:
               sleep 0.8
             fi
           done
+          echo "Publishing release..."
+          gh release edit latest --draft=false -R ${{ github.repository }}
