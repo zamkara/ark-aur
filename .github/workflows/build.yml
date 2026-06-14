@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        package: [bootupd, bootc, morewaita-icon-theme, pods, distroshelf, starship, fastfetch, scrcpy, android-tools, nix, distrobox, plymouth, zram-generator, github-cli, gnome-backgrounds, base-devel, gnome-disk-utility-git, gvfs, gvfs-mtp, gvfs-gphoto2, gvfs-afc, gvfs-smb, gvfs-nfs, android-udev, libimobiledevice, ifuse, usbutils, ntfs-3g, exfatprogs, fuse2, fuse3, lvm2, f2fs-tools, jfsutils, nilfs-utils, udftools, squashfs-tools, erofs-utils, sshfs, davfs2, fuseiso, nfs-utils, cifs-utils, samba, avahi, parted, gptfdisk, mdadm, smartmontools, hdparm, dkms, linux-headers, linux-zen-headers, linux-lts-headers, linux-hardened-headers, veracrypt, timeshift, zfs-dkms, hfsprogs]
+        package: [bootupd, bootc, morewaita-icon-theme, pods, distroshelf, starship, fastfetch, scrcpy, android-tools, nix, distrobox, plymouth, zram-generator, github-cli, gnome-backgrounds, base-devel, gnome-disk-utility-git, gvfs, gvfs-mtp, gvfs-gphoto2, gvfs-afc, gvfs-smb, gvfs-nfs, android-udev, libimobiledevice, ifuse, usbutils, ntfs-3g, exfatprogs, fuse2, fuse3, lvm2, f2fs-tools, jfsutils, nilfs-utils, udftools, squashfs-tools, erofs-utils, sshfs, davfs2, fuseiso, nfs-utils, cifs-utils, samba, avahi, parted, gptfdisk, mdadm, smartmontools, hdparm, dkms, linux-headers, linux-zen-headers, linux-lts-headers, linux-hardened-headers, veracrypt, timeshift, zfs-utils, zfs-dkms, hfsprogs]
     steps:
       - uses: actions/checkout@v4
       - name: Get AUR Version
