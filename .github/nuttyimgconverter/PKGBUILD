@@ -1,0 +1,20 @@
+pkgname=nuttyimgconverter
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Nautilus extension for converting images to various formats"
+arch=('any')
+url="https://github.com/witherdotexe/nuttyimgconverter"
+license=('GPL3')
+depends=('python-nautilus' 'imagemagick')
+optdepends=('libavif: AVIF encoding via avifenc'
+            'libwebp: WebP encoding via cwebp'
+            'libheif: HEIF encoding via heif-enc'
+            'ffmpeg: JPEG/PNG encoding via ffmpeg')
+source=("$url/archive/refs/heads/main.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  cd "$srcdir/nuttyimgconverter-main"
+  install -Dm644 image_converter.py \
+    "$pkgdir/usr/share/nautilus-python/extensions/image_converter.py"
+}

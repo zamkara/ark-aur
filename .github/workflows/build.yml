@@ -104,7 +104,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        package: [ark-system-tweaks, helium-browser]
+        package: [ark-system-tweaks, helium-browser, nuttyimgconverter]
     steps:
       - uses: actions/checkout@v4
       - name: Cache Pacman Local Build
