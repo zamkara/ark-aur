@@ -30,7 +30,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: aur-out/
-          key: ${{ runner.os }}-aur-v8-${{ matrix.package }}-${{ steps.aur-version.outputs.key || 'official' }}
+          key: ${{ runner.os }}-aur-v9-${{ matrix.package }}-${{ steps.aur-version.outputs.key || 'official' }}
       - name: Cache Pacman AUR Build
         if: steps.cache-aur.outputs.cache-hit != 'true'
         uses: actions/cache@v4
@@ -226,6 +226,8 @@ jobs:
           gh workflow run build-iso.yml --repo zamkara/ark.linux -f force=true
           echo "Done — both downstream workflows triggered"
 
+      - name: Strip alsa conflicts
+        run: rm -f aur-packages/alsa-*.pkg.tar.zst
       - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
