@@ -63,18 +63,9 @@ jobs:
             
             # Cek apakah paket ada di repo resmi
             if pacman -Si \"${{ matrix.package }}\" >/dev/null 2>&1; then
-              echo 'Downloading pre-compiled official package and its dependencies...'
-              if [ \"${{ matrix.package }}\" = \"base-devel\" ]; then
-                mkdir -p /tmp/empty-db
-                pacman -Sy --dbpath /tmp/empty-db >/dev/null 2>&1 || true
-                URLS=\$(pacman -Sp --noconfirm --dbpath /tmp/empty-db \"${{ matrix.package }}\" | grep -E '\.pkg\.tar\.(zst|xz)')
-              else
-                URLS=\$(pacman -Sp --print-format='%u' -d --noconfirm \"${{ matrix.package }}\" | grep -E '\.pkg\.tar\.(zst|xz)')
-              fi
-              for u in \$URLS; do
-                wget -q -P /work/aur-out/ \"\$u\"
-              done
-              rm -f /work/aur-out/alsa-*.pkg.tar.zst
+              echo 'Downloading pre-compiled official package...'
+              pacman -Swdd --noconfirm \"${{ matrix.package }}\"
+              cp /var/cache/pacman/pkg/${{ matrix.package }}*.pkg.tar.zst /work/aur-out/
             else
               echo 'Cloning and compiling AUR package...'
               # Cegah kegagalan libgit2/cargo di fakeroot: /root harus traversable
