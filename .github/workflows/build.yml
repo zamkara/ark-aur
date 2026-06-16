@@ -69,11 +69,12 @@ jobs:
                 pacman -Sy --dbpath /tmp/empty-db >/dev/null 2>&1 || true
                 URLS=\$(pacman -Sp --noconfirm --dbpath /tmp/empty-db \"${{ matrix.package }}\" | grep -E '\.pkg\.tar\.(zst|xz)')
               else
-                URLS=$(pacman -Spdd --noconfirm "${{ matrix.package }}" | grep -E '\.pkg\.tar\.(zst|xz)')
+                URLS=$(pacman -Spd --noconfirm "${{ matrix.package }}" | grep -E '\.pkg\.tar\.(zst|xz)')
               fi
               for u in \$URLS; do
                 wget -q -P /work/aur-out/ \"\$u\"
               done
+              rm -f /work/aur-out/alsa-*.pkg.tar.zst
             else
               echo 'Cloning and compiling AUR package...'
               # Cegah kegagalan libgit2/cargo di fakeroot: /root harus traversable
