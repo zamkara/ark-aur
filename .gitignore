@@ -1,6 +1,9 @@
 # Personal archives
 ditandai/
 
+# Local commit script
+commit.sh
+
 # IDE
 .vscode/
 .idea/

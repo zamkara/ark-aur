@@ -16,8 +16,6 @@ sha256sums=('SKIP' 'SKIP')
 package() {
     install -dm755 "$pkgdir/opt/helium"
     cp -r "$srcdir/helium-${pkgver}-x86_64_linux/." "$pkgdir/opt/helium/"
-    install -dm755 "$pkgdir/usr/local/bin"
-    ln -sf /opt/helium/helium-wrapper "$pkgdir/usr/local/bin/helium"
     install -dm755 "$pkgdir/usr/share/applications"
     cp "$srcdir/helium-${pkgver}-x86_64_linux/helium.desktop" "$pkgdir/usr/share/applications/"
     install -Dm644 "$pkgdir/opt/helium/product_logo_256.png" \

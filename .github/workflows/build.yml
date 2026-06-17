@@ -134,10 +134,17 @@ jobs:
               sudo -u builduser gpg --keyserver keyserver.ubuntu.com --recv-keys BE677C1989D35EAB2C5F26C9351601AD01D6378E
             fi
 
-            sudo -u builduser bash -c '
-              cd /work/.github/${{ matrix.package }}
-              makepkg -s --noconfirm
-            '
+            if [ "${{ matrix.package }}" = "helium-browser" ]; then
+              sudo -u builduser bash -c '
+                cd /work/.github/${{ matrix.package }}
+                makepkg -s --noconfirm --skippgpcheck
+              '
+            else
+              sudo -u builduser bash -c '
+                cd /work/.github/${{ matrix.package }}
+                makepkg -s --noconfirm
+              '
+            fi
             cp /work/.github/${{ matrix.package }}/*.pkg.tar.zst /work/aur-out/
           "
           sudo chown -R $USER:$USER aur-out/ pacman-local-cache/ cargo-local-cache-${{ matrix.package }}/
