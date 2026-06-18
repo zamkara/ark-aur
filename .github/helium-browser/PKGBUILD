@@ -20,4 +20,6 @@ package() {
     cp "$srcdir/helium-${pkgver}-x86_64_linux/helium.desktop" "$pkgdir/usr/share/applications/"
     install -Dm644 "$pkgdir/opt/helium/product_logo_256.png" \
         "$pkgdir/usr/share/icons/hicolor/256x256/apps/helium.png"
+    install -dm755 "$pkgdir/usr/bin"
+    ln -sf /opt/helium/helium-wrapper "$pkgdir/usr/bin/helium"
 }
