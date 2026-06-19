@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        package: [bootupd, bootc, morewaita-icon-theme, pods, distroshelf, starship, fastfetch, scrcpy, android-tools, nix, distrobox, plymouth, zram-generator, github-cli, gnome-backgrounds, gnome-disk-utility-git, gvfs, gvfs-mtp, gvfs-gphoto2, gvfs-afc, gvfs-smb, gvfs-nfs, android-udev, libimobiledevice, ifuse, usbutils, ntfs-3g, exfatprogs, fuse2, fuse3, lvm2, f2fs-tools, jfsutils, nilfs-utils, udftools, squashfs-tools, erofs-utils, sshfs, davfs2, fuseiso, nfs-utils, cifs-utils, samba, avahi, parted, gptfdisk, mdadm, smartmontools, hdparm, dkms, linux-headers, linux-zen-headers, linux-lts-headers, linux-hardened-headers, veracrypt, timeshift, zfs-utils, zfs-dkms, hfsprogs]
+        package: [bootupd, bootc, morewaita-icon-theme, distroshelf, starship, fastfetch, scrcpy, android-tools, nix, distrobox, plymouth, zram-generator, github-cli, gnome-backgrounds, gnome-disk-utility-git, gvfs, gvfs-mtp, gvfs-gphoto2, gvfs-afc, gvfs-smb, gvfs-nfs, android-udev, libimobiledevice, ifuse, usbutils, ntfs-3g, exfatprogs, fuse2, fuse3, lvm2, f2fs-tools, jfsutils, nilfs-utils, udftools, squashfs-tools, erofs-utils, sshfs, davfs2, fuseiso, nfs-utils, cifs-utils, samba, avahi, parted, gptfdisk, mdadm, smartmontools, hdparm, dkms, linux-headers, linux-zen-headers, linux-lts-headers, linux-hardened-headers, veracrypt, timeshift, zfs-utils, zfs-dkms, hfsprogs]
     steps:
       - uses: actions/checkout@v4
       - name: Get AUR Version
@@ -95,7 +95,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        package: [ark-system-tweaks, helium-browser, nuttyimgconverter]
+        package: [ark-system-tweaks, nuttyimgconverter]
     steps:
       - uses: actions/checkout@v4
       - name: Cache Pacman Local Build
@@ -124,27 +124,10 @@ jobs:
 
             chown -R builduser:builduser /work/.github/${{ matrix.package }}
 
-            # For helium-browser: fetch latest version and patch PKGBUILD
-            if [ "${{ matrix.package }}" = "helium-browser" ]; then
-              pacman -S --noconfirm curl jq gnupg
-              LATEST=\$(curl -s https://api.github.com/repos/imputnet/helium-linux/releases/latest | jq -r '.tag_name')
-              sed -i "s/pkgver=PLACEHOLDER/pkgver=\$LATEST/" /work/.github/${{ matrix.package }}/PKGBUILD
-              # recv-keys as builduser so makepkg can verify the signature
-              sudo -u builduser gpg --keyserver hkps://keys.openpgp.org --recv-keys BE677C1989D35EAB2C5F26C9351601AD01D6378E || \
-              sudo -u builduser gpg --keyserver keyserver.ubuntu.com --recv-keys BE677C1989D35EAB2C5F26C9351601AD01D6378E
-            fi
-
-            if [ "${{ matrix.package }}" = "helium-browser" ]; then
-              sudo -u builduser bash -c '
-                cd /work/.github/${{ matrix.package }}
-                makepkg -s --noconfirm --skippgpcheck
-              '
-            else
-              sudo -u builduser bash -c '
-                cd /work/.github/${{ matrix.package }}
-                makepkg -s --noconfirm
-              '
-            fi
+            sudo -u builduser bash -c '
+              cd /work/.github/${{ matrix.package }}
+              makepkg -s --noconfirm
+            '
             cp /work/.github/${{ matrix.package }}/*.pkg.tar.zst /work/aur-out/
           "
           sudo chown -R $USER:$USER aur-out/ pacman-local-cache/ cargo-local-cache-${{ matrix.package }}/
