@@ -72,7 +72,7 @@ categories=['Distrobox']
 [org.gnome.desktop.app-folders.folder:/org/gnome/desktop/app-folders/folders/System/]
 name='System'
 translate=true
-apps=['org.gnome.Settings.desktop', 'com.zamkara.alga.desktop', 'gnome-system-monitor.desktop']
+apps=['org.gnome.Settings.desktop', 'com.zamkara.alga.desktop']
 
 [org.gnome.desktop.app-folders.folder:/org/gnome/desktop/app-folders/folders/Utilities/]
 name='Utilities'
