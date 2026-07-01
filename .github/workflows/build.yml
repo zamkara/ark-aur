@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        package: [bootupd, bootc, morewaita-icon-theme, distroshelf, starship, fastfetch, scrcpy, android-tools, nix, distrobox, plymouth, zram-generator, github-cli, gnome-backgrounds, gnome-disk-utility-git, gvfs, gvfs-mtp, gvfs-gphoto2, gvfs-afc, gvfs-smb, gvfs-nfs, android-udev, libimobiledevice, ifuse, usbutils, ntfs-3g, exfatprogs, fuse2, fuse3, lvm2, f2fs-tools, jfsutils, nilfs-utils, udftools, squashfs-tools, erofs-utils, sshfs, davfs2, fuseiso, nfs-utils, cifs-utils, samba, avahi, parted, gptfdisk, mdadm, smartmontools, hdparm, dkms, linux-headers, linux-zen-headers, linux-lts-headers, linux-hardened-headers, veracrypt, timeshift, zfs-utils, zfs-dkms, hfsprogs, noto-fonts, noto-fonts-extra, noto-fonts-emoji, noto-fonts-cjk, ttf-dejavu, ttf-liberation, gnome-system-monitor]
+        package: [bootupd, bootc, morewaita-icon-theme, distroshelf, starship, fastfetch, scrcpy, android-tools, nix, distrobox, plymouth, zram-generator, github-cli, gnome-backgrounds, gnome-disk-utility-git, gvfs, gvfs-mtp, gvfs-gphoto2, gvfs-afc, gvfs-smb, gvfs-nfs, android-udev, libimobiledevice, ifuse, usbutils, ntfs-3g, exfatprogs, fuse2, fuse3, lvm2, f2fs-tools, jfsutils, nilfs-utils, udftools, squashfs-tools, erofs-utils, sshfs, davfs2, fuseiso, nfs-utils, cifs-utils, samba, avahi, parted, gptfdisk, mdadm, smartmontools, hdparm, dkms, linux-headers, linux-zen-headers, linux-lts-headers, linux-hardened-headers, veracrypt, timeshift, zfs-utils, zfs-dkms, hfsprogs, noto-fonts-all, gnome-system-monitor]
     steps:
       - uses: actions/checkout@v4
       - name: Get AUR Version
@@ -55,14 +55,18 @@ jobs:
         run: |
           mkdir -p aur-out
           sudo podman run --rm --privileged -v $(pwd):/work -v $(pwd)/pacman-aur-cache:/var/cache/pacman/pkg -v $(pwd)/cargo-aur-cache-${{ matrix.package }}:/home/builduser/.cargo -w /work ghcr.io/archlinux/archlinux:latest bash -c "
-            pacman -Syu --noconfirm base-devel git sudo rust wget blueprint-compiler
+            pacman -Syu --noconfirm base-devel git sudo rust wget curl jq blueprint-compiler
             useradd -m builduser || true
             chown -R builduser:builduser /home/builduser
             passwd -d builduser
             echo 'builduser ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builduser
             
-            # Cek apakah paket ada di repo resmi
-            if pacman -Si \"${{ matrix.package }}\" >/dev/null 2>&1; then
+            # Cek apakah paket dari zamkara/noto-fonts
+            if [[ \"${{ matrix.package }}\" == \"noto-fonts-all\" ]]; then
+              echo 'Downloading from zamkara/noto-fonts release...'
+              ASSET=$(curl -s https://api.github.com/repos/zamkara/noto-fonts/releases/latest | jq -r '.assets[] | select(.name | startswith(\"noto-fonts-all\")) | .browser_download_url')
+              curl -sL \"$ASSET\" -o /work/aur-out/noto-fonts-all.pkg.tar.zst
+            elif pacman -Si \"${{ matrix.package }}\" >/dev/null 2>&1; then
               echo 'Downloading pre-compiled official package...'
               pacman -Swdd --noconfirm \"${{ matrix.package }}\"
               cp /var/cache/pacman/pkg/${{ matrix.package }}*.pkg.tar.zst /work/aur-out/
