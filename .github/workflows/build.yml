@@ -64,8 +64,10 @@ jobs:
             # Cek apakah paket dari zamkara/noto-fonts
             if [[ \"${{ matrix.package }}\" == \"noto-fonts-all\" ]]; then
               echo 'Downloading from zamkara/noto-fonts release...'
-              ASSET=$(curl -s https://api.github.com/repos/zamkara/noto-fonts/releases/latest | jq -r '.assets[] | select(.name | startswith(\"noto-fonts-all\")) | .browser_download_url')
-              curl -sL \"$ASSET\" -o /work/aur-out/noto-fonts-all.pkg.tar.zst
+              NOTO_JSON=$(curl -s https://api.github.com/repos/zamkara/noto-fonts/releases/latest | jq -r '.assets[] | select(.name | startswith(\"noto-fonts-all\"))')
+              ASSET_NAME=$(echo \"$NOTO_JSON\" | jq -r '.name')
+              ASSET_URL=$(echo \"$NOTO_JSON\" | jq -r '.browser_download_url')
+              curl -sL \"$ASSET_URL\" -o \"/work/aur-out/$ASSET_NAME\"
             elif pacman -Si \"${{ matrix.package }}\" >/dev/null 2>&1; then
               echo 'Downloading pre-compiled official package...'
               pacman -Swdd --noconfirm \"${{ matrix.package }}\"
