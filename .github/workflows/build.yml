@@ -23,7 +23,11 @@ jobs:
       - name: Get AUR Version
         id: aur-version
         run: |
-          VERSION=$(curl -s "https://aur.archlinux.org/rpc/v5/info?arg[]=${{ matrix.package }}" | jq -r '.results[] | "\(.Name)-\(.Version)"')
+          if [[ "${{ matrix.package }}" == "noto-fonts-all" ]]; then
+            VERSION=$(curl -s "https://api.github.com/repos/zamkara/noto-fonts/releases/latest" | jq -r '.tag_name // "unknown"')
+          else
+            VERSION=$(curl -s "https://aur.archlinux.org/rpc/v5/info?arg[]=${{ matrix.package }}" | jq -r '.results[] | "\(.Name)-\(.Version)"')
+          fi
           echo "key=$VERSION" >> $GITHUB_OUTPUT
       - name: Cache AUR package
         id: cache-aur
