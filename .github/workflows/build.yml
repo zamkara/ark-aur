@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        package: [bootupd, bootc, morewaita-icon-theme, distroshelf, starship, fastfetch, scrcpy, android-tools, nix, distrobox, plymouth, zram-generator, github-cli, gnome-disk-utility-git, gvfs, gvfs-mtp, gvfs-gphoto2, gvfs-afc, gvfs-smb, gvfs-nfs, android-udev, libimobiledevice, ifuse, usbutils, ntfs-3g, exfatprogs, fuse2, fuse3, lvm2, f2fs-tools, jfsutils, nilfs-utils, udftools, squashfs-tools, erofs-utils, sshfs, davfs2, fuseiso, nfs-utils, cifs-utils, samba, avahi, parted, gptfdisk, mdadm, smartmontools, hdparm, dkms, linux-headers, linux-zen-headers, linux-lts-headers, linux-hardened-headers, veracrypt, timeshift, zfs-utils, zfs-dkms, hfsprogs, gnome-system-monitor]
+        package: [bootupd, libsepol, libselinux, morewaita-icon-theme, distroshelf, starship, fastfetch, scrcpy, android-tools, nix, distrobox, plymouth, zram-generator, github-cli, gnome-disk-utility-git, gvfs, gvfs-mtp, gvfs-gphoto2, gvfs-afc, gvfs-smb, gvfs-nfs, android-udev, libimobiledevice, ifuse, usbutils, ntfs-3g, exfatprogs, fuse2, fuse3, lvm2, f2fs-tools, jfsutils, nilfs-utils, udftools, squashfs-tools, erofs-utils, sshfs, davfs2, fuseiso, nfs-utils, cifs-utils, samba, avahi, parted, gptfdisk, mdadm, smartmontools, hdparm, dkms, linux-headers, linux-zen-headers, linux-lts-headers, linux-hardened-headers, veracrypt, timeshift, zfs-utils, zfs-dkms, hfsprogs, gnome-system-monitor]
     steps:
       - uses: actions/checkout@v4
       - name: Get AUR Version
@@ -30,7 +30,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: aur-out/
-          key: ${{ runner.os }}-aur-v9-${{ matrix.package }}-${{ steps.aur-version.outputs.key || 'official' }}
+          key: ${{ runner.os }}-aur-v10-${{ matrix.package }}-${{ steps.aur-version.outputs.key || 'official' }}
       - name: Cache Pacman AUR Build
         if: steps.cache-aur.outputs.cache-hit != 'true'
         uses: actions/cache@v4
@@ -84,17 +84,27 @@ jobs:
             done
           "
           sudo chown -R $USER:$USER aur-out/ pacman-aur-cache/ cargo-aur-cache-${{ matrix.package }}/
+      - name: Verify build produced a package
+        if: steps.cache-aur.outputs.cache-hit != 'true'
+        run: |
+          if ! ls aur-out/*.pkg.tar.zst >/dev/null 2>&1; then
+            echo "::error::No .pkg.tar.zst produced for ${{ matrix.package }} — refusing to cache an empty aur-out/"
+            exit 1
+          fi
+          ls -lh aur-out/
       - name: Upload AUR package Artifact
         uses: actions/upload-artifact@v4
         with:
           name: aur-package-${{ matrix.package }}
           path: aur-out/*.pkg.tar.zst
+          if-no-files-found: error
 
   build-local-packages:
     runs-on: ubuntu-latest
+    continue-on-error: true
     strategy:
       matrix:
-        package: [ark-system-tweaks, nuttyimgconverter]
+        package: [ark-system-tweaks, nuttyimgconverter, bootc]
     steps:
       - uses: actions/checkout@v4
       - name: Cache Pacman Local Build
@@ -123,6 +133,26 @@ jobs:
 
             chown -R builduser:builduser /work/.github/${{ matrix.package }}
 
+            # bootc needs libselinux headers (selinux-sys build script). Both libsepol
+            # and libselinux are AUR-only, so build+install each in dependency
+            # order — makepkg -s can only resolve deps found in the local db.
+            if [ '${{ matrix.package }}' = 'bootc' ]; then
+              touch /root/.gitconfig && chmod 644 /root/.gitconfig && chmod 755 /root
+              sudo -u builduser touch /home/builduser/.gitconfig
+              sudo -u builduser bash -c '
+                cd ~
+                git clone https://aur.archlinux.org/libsepol.git
+                cd libsepol && export GIT_CONFIG_NOSYSTEM=1 HOME=/home/builduser && makepkg -s --noconfirm --skippgpcheck
+              '
+              pacman -U --noconfirm /home/builduser/libsepol/libsepol-*.pkg.tar.zst
+              sudo -u builduser bash -c '
+                cd ~
+                git clone https://aur.archlinux.org/libselinux.git
+                cd libselinux && export GIT_CONFIG_NOSYSTEM=1 HOME=/home/builduser && makepkg -s --noconfirm --skippgpcheck
+              '
+              pacman -U --noconfirm /home/builduser/libselinux/libselinux-*.pkg.tar.zst
+            fi
+
             sudo -u builduser bash -c '
               cd /work/.github/${{ matrix.package }}
               makepkg -s --noconfirm
@@ -130,11 +160,19 @@ jobs:
             cp /work/.github/${{ matrix.package }}/*.pkg.tar.zst /work/aur-out/
           "
           sudo chown -R $USER:$USER aur-out/ pacman-local-cache/ cargo-local-cache-${{ matrix.package }}/
+      - name: Verify build produced a package
+        run: |
+          if ! ls aur-out/*.pkg.tar.zst >/dev/null 2>&1; then
+            echo "::error::No .pkg.tar.zst produced for ${{ matrix.package }}"
+            exit 1
+          fi
+          ls -lh aur-out/
       - name: Upload Local package Artifact
         uses: actions/upload-artifact@v4
         with:
           name: local-package-${{ matrix.package }}
           path: aur-out/*.pkg.tar.zst
+          if-no-files-found: error
 
   download-pacman-cache:
     runs-on: ubuntu-latest
@@ -191,6 +229,55 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Verify required packages are present
+        run: |
+          set -euo pipefail
+          # Union of the build-aur-packages and build-local-packages matrices.
+          # A release missing any of these silently breaks downstream builds
+          # (ark-image / ark.linux resolve bootc, bootupd, libselinux, ... from here),
+          # so fail here instead of producing an incomplete "successful" release.
+          PKGS=(
+            bootupd libsepol libselinux morewaita-icon-theme distroshelf starship
+            fastfetch scrcpy android-tools nix distrobox plymouth zram-generator
+            github-cli gnome-disk-utility-git gvfs gvfs-mtp gvfs-gphoto2 gvfs-afc
+            gvfs-smb gvfs-nfs android-udev libimobiledevice ifuse usbutils ntfs-3g
+            exfatprogs fuse2 fuse3 lvm2 f2fs-tools jfsutils nilfs-utils udftools
+            squashfs-tools erofs-utils sshfs davfs2 fuseiso nfs-utils cifs-utils
+            samba avahi parted gptfdisk mdadm smartmontools hdparm dkms linux-headers
+            linux-zen-headers linux-lts-headers linux-hardened-headers veracrypt
+            timeshift zfs-utils zfs-dkms hfsprogs gnome-system-monitor
+            ark-system-tweaks nuttyimgconverter bootc
+          )
+          MISSING=0
+          for pkg in "${PKGS[@]}"; do
+            if ! ls aur-packages/"${pkg}"-*.pkg.tar.zst >/dev/null 2>&1; then
+              echo "::error::Required package missing from release: ${pkg}"
+              MISSING=1
+            fi
+          done
+          echo "Packages in aur-packages/:"
+          ls -1 aur-packages | sort
+          exit $MISSING
+
+      - name: Strip alsa conflicts
+        run: rm -f aur-packages/alsa-*.pkg.tar.zst
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Creating release..."
+          gh release create latest --title "Latest Pre-built AUR Packages" --notes "Automated build for pre-compiled AUR packages and offline package cache." --latest -R ${{ github.repository }}
+          echo "Uploading packages..."
+          for f in aur-packages/*.pkg.tar.zst pacman-cache/pacman-cache.tar.gz.part-*; do
+            if [ -f "$f" ]; then
+              echo "Uploading $f..."
+              gh release upload latest "$f" --clobber -R ${{ github.repository }}
+              sleep 0.8
+            fi
+          done
+          echo "Publishing release..."
+          gh release edit latest --draft=false -R ${{ github.repository }}
+
       - name: Trigger ark-image and ark.linux rebuilds
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
@@ -205,22 +292,3 @@ jobs:
           echo "Triggering ark.linux ISO rebuild..."
           gh workflow run build-iso.yml --repo zamkara/ark.linux -f force=true
           echo "Done — both downstream workflows triggered"
-
-      - name: Strip alsa conflicts
-        run: rm -f aur-packages/alsa-*.pkg.tar.zst
-      - name: Create Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Creating release..."
-          gh release create latest --title "Latest Pre-built AUR Packages" --notes "Automated build for \`bootc\`, \`bootupd\`, and offline package cache." --latest -R ${{ github.repository }}
-          echo "Uploading packages..."
-          for f in aur-packages/*.pkg.tar.zst pacman-cache/pacman-cache.tar.gz.part-*; do
-            if [ -f "$f" ]; then
-              echo "Uploading $f..."
-              gh release upload latest "$f" --clobber -R ${{ github.repository }}
-              sleep 0.8
-            fi
-          done
-          echo "Publishing release..."
-          gh release edit latest --draft=false -R ${{ github.repository }}

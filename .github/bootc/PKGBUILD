@@ -1,0 +1,59 @@
+# Based on AUR bootc (maintainer: Joost Molenaar <jjm@j0057.nl>)
+# Local copy because upstream AUR is missing the libselinux build dependency:
+# bootc >= 1.16 pulls in selinux-sys, whose build script hard-requires
+# selinux/selinux.h and aborts with:
+#   selinux-sys: Failed to find 'selinux/selinux.h' ... Kind(NotFound)
+# Remove this file once the AUR PKGBUILD gains libselinux in makedepends.
+
+pkgname=bootc
+pkgver=1.16.13
+pkgrel=1
+pkgdesc='Boot and upgrade via container images'
+url='https://github.com/bootc-dev/bootc'
+license=('Apache-2.0 OR MIT')
+makedepends=(
+    cargo
+    clang
+    go-md2man
+    libselinux
+)
+depends=(
+    bash
+    gcc-libs
+    glib2
+    glibc
+    libselinux
+    openssl
+    ostree
+    zlib
+    zstd
+)
+arch=('x86_64')
+source=("https://github.com/bootc-dev/bootc/releases/download/v$pkgver/bootc-$pkgver.tar.zstd")
+sha256sums=('44fa63e4d2efdc890ad59a3883077ad1f064e5d2fa72dd0d10ab0df2298d6d7c')
+
+prepare() {
+    cd $pkgname-$pkgver
+    cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+    export CARGO_TARGET_DIR=target
+    cd $pkgname-$pkgver
+    cargo build --frozen --release
+    cargo run --frozen --package xtask -- manpages
+}
+
+check() {
+    cd $pkgname-$pkgver
+    cargo test --frozen
+}
+
+package() {
+    make -C $pkgname-$pkgver DESTDIR=$pkgdir install
+
+    install -m 644 -t $pkgdir/usr/share/doc/$pkgname -D $pkgname-$pkgver/README.md
+
+    install -m 644 -t $pkgdir/usr/share/licenses/$pkgname -D $pkgname-$pkgver/LICENSE-APACHE
+    install -m 644 -t $pkgdir/usr/share/licenses/$pkgname -D $pkgname-$pkgver/LICENSE-MIT
+}
