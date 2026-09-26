@@ -60,7 +60,19 @@ jobs:
             chown -R builduser:builduser /home/builduser
             passwd -d builduser
             echo 'builduser ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/builduser
-            
+
+            # libselinux (AUR-only) depends on libsepol (AUR-only): makepkg -s cannot
+            # resolve an uninstalled AUR dep, so pre-build + install libsepol first.
+            if [ \"${{ matrix.package }}\" = \"libselinux\" ]; then
+              echo 'Pre-building libsepol for libselinux...'
+              sudo -u builduser bash -c '
+                cd ~
+                git clone https://aur.archlinux.org/libsepol.git
+                cd libsepol && export GIT_CONFIG_NOSYSTEM=1 HOME=/home/builduser && makepkg -s --noconfirm --skippgpcheck
+              '
+              pacman -U --noconfirm /home/builduser/libsepol/libsepol-*.pkg.tar.zst
+            fi
+
             if pacman -Si \"${{ matrix.package }}\" >/dev/null 2>&1; then
               echo 'Downloading pre-compiled official package...'
               pacman -Swdd --noconfirm \"${{ matrix.package }}\"
