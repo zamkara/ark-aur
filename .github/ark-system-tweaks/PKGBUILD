@@ -1,11 +1,36 @@
 pkgname=ark-system-tweaks
 pkgver=1.0.0
-pkgrel=21
+pkgrel=22
 pkgdesc="System configuration and tweaks for Ark Linux"
 arch=('any')
-license=('MIT')
+license=('MIT' 'CC-BY-SA-3.0-US')
+makedepends=('libheif' 'libjpeg-turbo')
+# Keep the existing Ark artwork, but ship a JPEG that GNOME can load without
+# interpreting the HEIC's unsupported CICP color-primary metadata.
+_wallpaper_commit=f3c227ad7a6dc6c161f35d8783e966c8a423ed5c
+source=(
+  "grid.heic::https://raw.githubusercontent.com/zamkara/ark-backgrounds/${_wallpaper_commit}/backgrounds/grid.heic"
+  "wallpaper-COPYING::https://raw.githubusercontent.com/zamkara/ark-backgrounds/${_wallpaper_commit}/COPYING"
+  "wallpaper-AUTHORS::https://raw.githubusercontent.com/zamkara/ark-backgrounds/${_wallpaper_commit}/AUTHORS"
+)
+sha256sums=(
+  'a2fb5da52e68377cd6e0f273ff4a8e78b559d92cbe69e1d6c9188d6cc1cfb220'
+  '3631dc0829b5342781ec14cd9dfccb9a67554e2068332c16d31d68739ff98ed5'
+  '69cd930d9ec403757b65965fdacb8fc7590361490151b80e29f2f641ba19e14a'
+)
+
+build() {
+  heif-convert -q 95 "$srcdir/grid.heic" "$srcdir/grid.jpg"
+}
 
 package() {
+  install -Dm644 "$srcdir/grid.jpg" "$pkgdir/usr/share/backgrounds/ark/grid.jpg"
+  install -Dm644 "$srcdir/wallpaper-COPYING" "$pkgdir/usr/share/licenses/$pkgname/wallpaper-COPYING"
+  install -Dm644 "$srcdir/wallpaper-AUTHORS" "$pkgdir/usr/share/licenses/$pkgname/wallpaper-AUTHORS"
+  printf '%s\n' \
+    "Source: https://github.com/zamkara/ark-backgrounds/tree/$_wallpaper_commit" \
+    'Change: converted grid.heic to JPEG at quality 95 for GNOME compatibility.' \
+    > "$pkgdir/usr/share/licenses/$pkgname/wallpaper-changes"
   # 1. OSTree prepare-root config
   install -Dm644 /dev/null "$pkgdir/etc/ostree/prepare-root.conf"
   printf '[sysroot]\ncomposefs=false\n' > "$pkgdir/etc/ostree/prepare-root.conf"
@@ -62,8 +87,8 @@ EOF
 icon-theme='MoreWaita'
 
 [org.gnome.desktop.background]
-picture-uri='file:///usr/share/backgrounds/ark/grid.jxl'
-picture-uri-dark='file:///usr/share/backgrounds/ark/grid.jxl'
+picture-uri='file:///usr/share/backgrounds/ark/grid.jpg'
+picture-uri-dark='file:///usr/share/backgrounds/ark/grid.jpg'
 picture-options='zoom'
 
 [org.gnome.desktop.app-folders]
