@@ -9,6 +9,10 @@ on:
     - cron: '0 0 * * 5'
   workflow_dispatch:
 
+concurrency:
+  group: ark-aur-release
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -23,14 +27,16 @@ jobs:
       - name: Get AUR Version
         id: aur-version
         run: |
-          VERSION=$(curl -s "https://aur.archlinux.org/rpc/v5/info?arg[]=${{ matrix.package }}" | jq -r '.results[] | "\(.Name)-\(.Version)"')
+          VERSION=$(curl -fsS --retry 3 "https://aur.archlinux.org/rpc/v5/info?arg[]=${{ matrix.package }}" | jq -r '.results[] | "\(.Name)-\(.Version)"')
           echo "key=$VERSION" >> $GITHUB_OUTPUT
+      # Official packages have no AUR version: always fetch them from current repos.
       - name: Cache AUR package
+        if: steps.aur-version.outputs.key != ''
         id: cache-aur
         uses: actions/cache@v4
         with:
           path: aur-out/
-          key: ${{ runner.os }}-aur-v10-${{ matrix.package }}-${{ steps.aur-version.outputs.key || 'official' }}
+          key: ${{ runner.os }}-aur-v11-${{ matrix.package }}-${{ steps.aur-version.outputs.key || 'official' }}
       - name: Cache Pacman AUR Build
         if: steps.cache-aur.outputs.cache-hit != 'true'
         uses: actions/cache@v4
@@ -54,7 +60,7 @@ jobs:
         if: steps.cache-aur.outputs.cache-hit != 'true'
         run: |
           mkdir -p aur-out
-          sudo podman run --rm --privileged -v $(pwd):/work -v $(pwd)/pacman-aur-cache:/var/cache/pacman/pkg -v $(pwd)/cargo-aur-cache-${{ matrix.package }}:/home/builduser/.cargo -w /work ghcr.io/archlinux/archlinux:latest bash -c "
+          sudo podman run --rm --privileged -v $(pwd):/work -v $(pwd)/pacman-aur-cache:/var/cache/pacman/pkg -v $(pwd)/cargo-aur-cache-${{ matrix.package }}:/home/builduser/.cargo -w /work ghcr.io/archlinux/archlinux:latest bash -e -o pipefail -c "
             pacman -Syu --noconfirm base-devel git sudo rust wget curl jq blueprint-compiler
             useradd -m builduser || true
             chown -R builduser:builduser /home/builduser
@@ -65,7 +71,7 @@ jobs:
             # resolve an uninstalled AUR dep, so pre-build + install libsepol first.
             if [ \"${{ matrix.package }}\" = \"libselinux\" ]; then
               echo 'Pre-building libsepol for libselinux...'
-              sudo -u builduser bash -c '
+              sudo -u builduser bash -e -c '
                 cd ~
                 git clone https://aur.archlinux.org/libsepol.git
                 cd libsepol && export GIT_CONFIG_NOSYSTEM=1 HOME=/home/builduser && makepkg -s --noconfirm --skippgpcheck
@@ -76,13 +82,14 @@ jobs:
             if pacman -Si \"${{ matrix.package }}\" >/dev/null 2>&1; then
               echo 'Downloading pre-compiled official package...'
               pacman -Swdd --noconfirm \"${{ matrix.package }}\"
-              cp /var/cache/pacman/pkg/${{ matrix.package }}*.pkg.tar.zst /work/aur-out/
+              filename=\"\$(pacman -Spdd --print-format %f \"${{ matrix.package }}\")\"
+              cp \"/var/cache/pacman/pkg/\$filename\" /work/aur-out/
             else
               echo 'Cloning and compiling AUR package...'
               # Cegah kegagalan libgit2/cargo di fakeroot: /root harus traversable
               touch /root/.gitconfig && chmod 644 /root/.gitconfig && chmod 755 /root
               sudo -u builduser touch /home/builduser/.gitconfig
-              sudo -u builduser bash -c '
+              sudo -u builduser bash -e -c '
                 cd ~
                 git clone https://aur.archlinux.org/${{ matrix.package }}.git
                 cd ${{ matrix.package }} && export GIT_CONFIG_NOSYSTEM=1 HOME=/home/builduser && makepkg -s --noconfirm --skippgpcheck
@@ -113,7 +120,6 @@ jobs:
 
   build-local-packages:
     runs-on: ubuntu-latest
-    continue-on-error: true
     strategy:
       matrix:
         package: [ark-system-tweaks, nuttyimgconverter, bootc]
@@ -134,7 +140,7 @@ jobs:
           mkdir -p pacman-local-cache cargo-local-cache-${{ matrix.package }} aur-out
       - name: Build Local package in Arch container
         run: |
-          sudo podman run --rm --privileged -v $(pwd):/work -v $(pwd)/pacman-local-cache:/var/cache/pacman/pkg -v $(pwd)/cargo-local-cache-${{ matrix.package }}:/home/builduser/.cargo -w /work ghcr.io/archlinux/archlinux:latest bash -c "
+          sudo podman run --rm --privileged -v $(pwd):/work -v $(pwd)/pacman-local-cache:/var/cache/pacman/pkg -v $(pwd)/cargo-local-cache-${{ matrix.package }}:/home/builduser/.cargo -w /work ghcr.io/archlinux/archlinux:latest bash -e -o pipefail -c "
             sed -i '/NoExtract/d' /etc/pacman.conf
             pacman -Syu --noconfirm base-devel glibc git sudo rust
             pacman -S --noconfirm glibc
@@ -151,13 +157,13 @@ jobs:
             if [ '${{ matrix.package }}' = 'bootc' ]; then
               touch /root/.gitconfig && chmod 644 /root/.gitconfig && chmod 755 /root
               sudo -u builduser touch /home/builduser/.gitconfig
-              sudo -u builduser bash -c '
+              sudo -u builduser bash -e -c '
                 cd ~
                 git clone https://aur.archlinux.org/libsepol.git
                 cd libsepol && export GIT_CONFIG_NOSYSTEM=1 HOME=/home/builduser && makepkg -s --noconfirm --skippgpcheck
               '
               pacman -U --noconfirm /home/builduser/libsepol/libsepol-*.pkg.tar.zst
-              sudo -u builduser bash -c '
+              sudo -u builduser bash -e -c '
                 cd ~
                 git clone https://aur.archlinux.org/libselinux.git
                 cd libselinux && export GIT_CONFIG_NOSYSTEM=1 HOME=/home/builduser && makepkg -s --noconfirm --skippgpcheck
@@ -165,7 +171,7 @@ jobs:
               pacman -U --noconfirm /home/builduser/libselinux/libselinux-*.pkg.tar.zst
             fi
 
-            sudo -u builduser bash -c '
+            sudo -u builduser bash -e -c '
               cd /work/.github/${{ matrix.package }}
               makepkg -s --noconfirm
             '
@@ -192,10 +198,10 @@ jobs:
       - name: Download all pacman packages in Arch container
         run: |
           mkdir -p pacman-cache
-          sudo podman run --rm --privileged -v $(pwd)/pacman-cache:/var/cache/pacman/pkg ghcr.io/archlinux/archlinux:latest bash -c "
+          sudo podman run --rm --privileged -v $(pwd)/pacman-cache:/var/cache/pacman/pkg ghcr.io/archlinux/archlinux:latest bash -e -o pipefail -c "
             mkdir -p /tmp/empty-root/var/lib/pacman
             pacman -Sy
-            yes | pacman -Syw --noconfirm --cachedir /var/cache/pacman/pkg --root /tmp/empty-root \
+            pacman -Syw --noconfirm --cachedir /var/cache/pacman/pkg --root /tmp/empty-root \
               base glibc linux linux-zen linux-lts linux-hardened linux-headers linux-zen-headers linux-lts-headers linux-hardened-headers \
               linux-firmware networkmanager mkinitcpio gnome-shell gnome-control-center \
               gnome-keyring gnome-session gnome-settings-daemon nautilus xdg-desktop-portal-gnome xdg-user-dirs-gtk \
@@ -236,11 +242,6 @@ jobs:
         with:
           name: pacman-cache-tarball
           path: pacman-cache/
-      - name: Delete old release
-        run: gh release delete latest --cleanup-tag -y -R ${{ github.repository }} || true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Verify required packages are present
         run: |
           set -euo pipefail
@@ -271,6 +272,20 @@ jobs:
           ls -1 aur-packages | sort
           exit $MISSING
 
+      - name: Verify Plymouth initramfs hook
+        run: |
+          tar -tf aur-packages/plymouth-*.pkg.tar.zst > plymouth-files.txt
+          grep -Fx 'usr/lib/initcpio/install/plymouth' plymouth-files.txt
+          grep -Fx 'usr/lib/initcpio/hooks/plymouth' plymouth-files.txt
+      - name: Verify Pacman cache
+        run: |
+          cat pacman-cache/pacman-cache.tar.gz.part-* | tar -tzf - > pacman-cache-files.txt
+          test -s pacman-cache-files.txt
+      - name: Delete old release
+        run: gh release delete latest --cleanup-tag -y -R ${{ github.repository }} || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Strip alsa conflicts
         run: rm -f aur-packages/alsa-*.pkg.tar.zst
       - name: Create Release
@@ -278,7 +293,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Creating release..."
-          gh release create latest --title "Latest Pre-built AUR Packages" --notes "Automated build for pre-compiled AUR packages and offline package cache." --latest -R ${{ github.repository }}
+          gh release create latest --title "Latest Pre-built AUR Packages" --notes "Automated build for pre-compiled AUR packages and offline package cache. Source: $GITHUB_SHA; run: $GITHUB_RUN_ID." --target "$GITHUB_SHA" --draft -R ${{ github.repository }}
           echo "Uploading packages..."
           for f in aur-packages/*.pkg.tar.zst pacman-cache/pacman-cache.tar.gz.part-*; do
             if [ -f "$f" ]; then
@@ -288,7 +303,7 @@ jobs:
             fi
           done
           echo "Publishing release..."
-          gh release edit latest --draft=false -R ${{ github.repository }}
+          gh release edit latest --draft=false --latest -R ${{ github.repository }}
 
       - name: Trigger ark-image and ark.linux rebuilds
         env:
