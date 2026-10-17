@@ -4,7 +4,7 @@ pkgrel=22
 pkgdesc="System configuration and tweaks for Ark Linux"
 arch=('any')
 license=('MIT' 'CC-BY-SA-3.0-US')
-makedepends=('libheif' 'libjpeg-turbo')
+makedepends=('libheif' 'libjpeg-turbo' 'libpng' 'libtiff')
 # Keep the existing Ark artwork, but ship a JPEG that GNOME can load without
 # interpreting the HEIC's unsupported CICP color-primary metadata.
 _wallpaper_commit=f3c227ad7a6dc6c161f35d8783e966c8a423ed5c
